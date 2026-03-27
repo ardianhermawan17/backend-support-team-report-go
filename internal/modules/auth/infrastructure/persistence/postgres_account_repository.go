@@ -72,7 +72,9 @@ func (r *AccountRepository) FindByUsername(ctx context.Context, username string)
 		FROM users u
 		JOIN companies c ON c.user_id = u.id
 		WHERE u.username = $1
-	`, username).Scan(
+		  AND u.deleted_at IS NULL
+		  AND c.deleted_at IS NULL
+		`, username).Scan(
 		&account.User.ID,
 		&account.User.Username,
 		&account.User.PasswordHash,

@@ -24,7 +24,7 @@ This starts:
 
 - PostgreSQL on `localhost:5432`
 - the API on `localhost:8080`
-- schema initialization from `deployments/docker/postgres/init/001_initial.sql`
+- schema migration from `internal/platform/database/migrations/001_initial.sql` via the `migrate` container
 
 ## Health Check
 
