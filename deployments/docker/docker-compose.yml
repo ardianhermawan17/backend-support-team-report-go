@@ -1,0 +1,51 @@
+name: "soccer-team-reports"
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: soccer-team-report-postgres
+    environment:
+      POSTGRES_DB: soccer_team_report
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d soccer_team_report"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+
+  api:
+    container_name: soccer-team-report-api
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile
+    environment:
+      APP_ENV: local
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8080
+      DATABASE_DSN: postgres://postgres:postgres@postgres:5432/soccer_team_report?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  migrate:
+    container_name: soccer-team-report-migrate
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.dev
+    command: ["go", "run", "./cmd/migrate"]
+    environment:
+      APP_ENV: local
+      DATABASE_DSN: postgres://postgres:postgres@postgres:5432/soccer_team_report?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

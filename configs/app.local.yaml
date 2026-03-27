@@ -1,0 +1,5 @@
+app:
+  env: local
+
+database:
+  dsn: postgres://postgres:postgres@localhost:5432/soccer_team_report?sslmode=disable

@@ -1,0 +1,16 @@
+app:
+  name: soccer-team-report
+  host: 0.0.0.0
+  port: "8080"
+  read_timeout: 5s
+  write_timeout: 10s
+  shutdown_timeout: 10s
+
+database:
+  dsn: postgres://postgres:postgres@localhost:5432/soccer_team_report?sslmode=disable
+  max_open_conns: 10
+  max_idle_conns: 5
+  conn_max_lifetime: 30m
+  health_check_timeout: 2s
+  startup_ping_timeout: 30s
+  startup_ping_interval: 2s
