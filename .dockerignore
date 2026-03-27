@@ -1,0 +1,14 @@
+.git
+.gitignore
+.idea
+.qodo
+
+docs/
+tests/
+tools/
+
+deployments/k8s/
+deployments/nginx/
+
+**/*.log
+**/*.tmp

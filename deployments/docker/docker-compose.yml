@@ -39,7 +39,7 @@ services:
     build:
       context: ../..
       dockerfile: deployments/docker/Dockerfile.dev
-    command: ["go", "run", "./cmd/migrate"]
+    command: ["/bin/migrate"]
     environment:
       APP_ENV: local
       DATABASE_DSN: postgres://postgres:postgres@postgres:5432/soccer_team_report?sslmode=disable

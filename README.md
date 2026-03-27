@@ -14,7 +14,14 @@ go run ./cmd/api
 docker compose -f deployments/docker/docker-compose.yml up --build
 ```
 
+For subsequent runs (without rebuilding images):
+
+```bash
+docker compose -f deployments/docker/docker-compose.yml up
+```
+
 This starts:
+
 - PostgreSQL on `localhost:5432`
 - the API on `localhost:8080`
 - schema initialization from `deployments/docker/postgres/init/001_initial.sql`
