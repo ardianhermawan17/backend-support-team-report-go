@@ -58,6 +58,10 @@ func (c *Connection) Close() error {
 	return c.db.Close()
 }
 
+func (c *Connection) DB() *sql.DB {
+	return c.db
+}
+
 func (c *Connection) waitUntilReady(ctx context.Context) error {
 	deadlineCtx, cancel := context.WithTimeout(ctx, c.config.StartupPingTimeout)
 	defer cancel()

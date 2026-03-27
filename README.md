@@ -29,3 +29,11 @@ This starts:
 ## Health Check
 
 `GET /api/v1/health`
+
+## Tests
+
+```bash
+go test ./...
+```
+
+The integration tests start a real PostgreSQL container through Docker, apply the SQL migrations, verify the auth repository, and then verify the health endpoint against that live database.

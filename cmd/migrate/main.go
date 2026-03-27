@@ -5,14 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
-	"sort"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"backend-sport-team-report-go/internal/config"
+	"backend-sport-team-report-go/internal/platform/database/migrations"
 )
 
 func main() {
@@ -30,22 +28,9 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	files, err := filepath.Glob(filepath.Join("internal", "platform", "database", "migrations", "*.sql"))
-	if err != nil {
-		log.Fatalf("list migrations: %v", err)
+	if err := migrations.ApplyDir(ctx, db, "internal/platform/database/migrations"); err != nil {
+		log.Fatalf("apply migrations: %v", err)
 	}
-	sort.Strings(files)
 
-	for _, file := range files {
-		sqlBytes, err := os.ReadFile(file)
-		if err != nil {
-			log.Fatalf("read migration %s: %v", file, err)
-		}
-
-		if _, err := db.ExecContext(ctx, string(sqlBytes)); err != nil {
-			log.Fatalf("apply migration %s: %v", file, err)
-		}
-
-		fmt.Printf("applied migration %s\n", file)
-	}
+	fmt.Println("applied migrations")
 }
