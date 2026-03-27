@@ -1,7 +1,7 @@
 name: "soccer-team-reports"
 services:
   postgres:
-    image: postgres:18-alpine
+    image: postgres:17.0-alpine
     container_name: soccer-team-report-postgres
     environment:
       POSTGRES_DB: soccer_team_report
@@ -16,7 +16,6 @@ services:
       retries: 10
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./postgres/init:/docker-entrypoint-initdb.d:ro
 
   api:
     container_name: soccer-team-report-api
@@ -29,8 +28,8 @@ services:
       APP_PORT: 8080
       DATABASE_DSN: postgres://postgres:postgres@postgres:5432/soccer_team_report?sslmode=disable
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "8080:8080"
 
