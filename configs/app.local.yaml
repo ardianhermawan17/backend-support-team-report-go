@@ -3,3 +3,7 @@ app:
 
 database:
   dsn: postgres://postgres:postgres@localhost:5432/soccer_team_report?sslmode=disable
+
+auth:
+  jwt_secret: local-dev-only-change-me
+  access_token_ttl: 15m

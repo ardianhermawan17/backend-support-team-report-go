@@ -50,6 +50,10 @@ func defaultConfig() Config {
 			StartupPingTimeout:  30 * time.Second,
 			StartupPingInterval: 2 * time.Second,
 		},
+		Auth: AuthConfig{
+			JWTSecret:      "local-dev-only-change-me",
+			AccessTokenTTL: 15 * time.Minute,
+		},
 	}
 }
 
@@ -75,6 +79,7 @@ func applyEnvOverrides(cfg *Config) {
 	cfg.App.Host = getenv("APP_HOST", cfg.App.Host)
 	cfg.App.Port = getenv("APP_PORT", cfg.App.Port)
 	cfg.Database.DSN = getenv("DATABASE_DSN", cfg.Database.DSN)
+	cfg.Auth.JWTSecret = getenv("AUTH_JWT_SECRET", cfg.Auth.JWTSecret)
 }
 
 func getenv(key, fallback string) string {

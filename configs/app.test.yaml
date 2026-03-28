@@ -4,3 +4,7 @@ app:
 
 database:
   dsn: postgres://postgres:postgres@localhost:5432/soccer_team_report_test?sslmode=disable
+
+auth:
+  jwt_secret: integration-test-secret
+  access_token_ttl: 15m
