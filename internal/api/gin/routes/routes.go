@@ -9,6 +9,7 @@ import (
 
 	"backend-sport-team-report-go/internal/config"
 	authhttp "backend-sport-team-report-go/internal/modules/auth/interfaces/http"
+	playershttp "backend-sport-team-report-go/internal/modules/players/interfaces/http"
 	teamshttp "backend-sport-team-report-go/internal/modules/teams/interfaces/http"
 	"backend-sport-team-report-go/internal/platform/database/postgres"
 	"backend-sport-team-report-go/internal/shared/logger"
@@ -42,6 +43,9 @@ func Register(engine *gin.Engine, cfg config.Config, db *postgres.Connection, lo
 		authMiddleware := authhttp.RegisterRoutes(v1, db, log, cfg.Auth)
 		if err := teamshttp.RegisterRoutes(v1, db, log, authMiddleware); err != nil {
 			log.InfoContext(context.Background(), "failed to register teams routes", "error", err.Error())
+		}
+		if err := playershttp.RegisterRoutes(v1, db, log, authMiddleware); err != nil {
+			log.InfoContext(context.Background(), "failed to register players routes", "error", err.Error())
 		}
 	}
 }
