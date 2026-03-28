@@ -9,8 +9,8 @@ import (
 
 	"backend-sport-team-report-go/internal/config"
 	authhttp "backend-sport-team-report-go/internal/modules/auth/interfaces/http"
-	playershttp "backend-sport-team-report-go/internal/modules/players/interfaces/http"
-	teamshttp "backend-sport-team-report-go/internal/modules/teams/interfaces/http"
+	playershttp "backend-sport-team-report-go/internal/modules/player/interfaces/http"
+	teamshttp "backend-sport-team-report-go/internal/modules/team/interfaces/http"
 	"backend-sport-team-report-go/internal/platform/database/postgres"
 	"backend-sport-team-report-go/internal/shared/logger"
 )
