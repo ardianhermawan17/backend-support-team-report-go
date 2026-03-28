@@ -16,6 +16,6 @@ func New(cfg config.Config, db *postgres.Connection, log *logger.Logger) *gin.En
 
 	engine := gin.New()
 	engine.Use(gin.Recovery())
-	ginroutes.Register(engine, db, log)
+	ginroutes.Register(engine, cfg, db, log)
 	return engine
 }

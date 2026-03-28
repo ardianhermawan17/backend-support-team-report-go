@@ -6,11 +6,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"backend-sport-team-report-go/internal/config"
+	authhttp "backend-sport-team-report-go/internal/modules/auth/interfaces/http"
 	"backend-sport-team-report-go/internal/platform/database/postgres"
 	"backend-sport-team-report-go/internal/shared/logger"
 )
 
-func Register(engine *gin.Engine, db *postgres.Connection, log *logger.Logger) {
+func Register(engine *gin.Engine, cfg config.Config, db *postgres.Connection, log *logger.Logger) {
 	v1 := engine.Group("/api/v1")
 	v1.GET("/health", func(c *gin.Context) {
 		databaseStatus := "up"
@@ -33,4 +35,8 @@ func Register(engine *gin.Engine, db *postgres.Connection, log *logger.Logger) {
 			"checked_at": time.Now().UTC().Format(time.RFC3339),
 		})
 	})
+
+	if db != nil {
+		authhttp.RegisterRoutes(v1, db, log, cfg.Auth)
+	}
 }

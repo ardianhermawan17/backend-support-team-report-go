@@ -5,6 +5,7 @@ import "time"
 type Config struct {
 	App      AppConfig      `yaml:"app"`
 	Database DatabaseConfig `yaml:"database"`
+	Auth     AuthConfig     `yaml:"auth"`
 }
 
 type AppConfig struct {
@@ -29,4 +30,9 @@ type DatabaseConfig struct {
 	HealthCheckTimeout  time.Duration `yaml:"health_check_timeout"`
 	StartupPingTimeout  time.Duration `yaml:"startup_ping_timeout"`
 	StartupPingInterval time.Duration `yaml:"startup_ping_interval"`
+}
+
+type AuthConfig struct {
+	JWTSecret      string        `yaml:"jwt_secret"`
+	AccessTokenTTL time.Duration `yaml:"access_token_ttl"`
 }
