@@ -12,6 +12,7 @@ import (
 	playerdomain "backend-sport-team-report-go/internal/modules/player/domain"
 	"backend-sport-team-report-go/internal/modules/player/domain/entities"
 	"backend-sport-team-report-go/internal/platform/database/postgres"
+	"backend-sport-team-report-go/internal/shared/paginator"
 )
 
 type PlayerRepository struct {
@@ -65,9 +66,22 @@ func (r *PlayerRepository) Create(ctx context.Context, companyID int64, player e
 	return nil
 }
 
-func (r *PlayerRepository) ListByTeam(ctx context.Context, companyID, teamID int64) ([]entities.Player, error) {
+func (r *PlayerRepository) ListByTeam(ctx context.Context, companyID, teamID int64, params paginator.Params) (paginator.Result[entities.Player], error) {
 	if !r.teamExists(ctx, companyID, teamID) {
-		return nil, playerdomain.ErrTeamNotFound
+		return paginator.Result[entities.Player]{}, playerdomain.ErrTeamNotFound
+	}
+
+	var totalItems int
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM players p
+		JOIN teams t ON t.id = p.team_id
+		WHERE p.team_id = $1
+		  AND t.company_id = $2
+		  AND t.deleted_at IS NULL
+		  AND p.deleted_at IS NULL
+	`, teamID, companyID).Scan(&totalItems); err != nil {
+		return paginator.Result[entities.Player]{}, fmt.Errorf("count players by team: %w", err)
 	}
 
 	rows, err := r.db.QueryContext(ctx, `
@@ -89,10 +103,12 @@ func (r *PlayerRepository) ListByTeam(ctx context.Context, companyID, teamID int
 		  AND t.company_id = $2
 		  AND t.deleted_at IS NULL
 		  AND p.deleted_at IS NULL
-		ORDER BY p.created_at ASC
-	`, teamID, companyID)
+		ORDER BY p.created_at ASC, p.id ASC
+		LIMIT $3
+		OFFSET $4
+	`, teamID, companyID, params.Limit, params.Offset)
 	if err != nil {
-		return nil, fmt.Errorf("list players by team: %w", err)
+		return paginator.Result[entities.Player]{}, fmt.Errorf("list players by team: %w", err)
 	}
 	defer rows.Close()
 
@@ -100,16 +116,19 @@ func (r *PlayerRepository) ListByTeam(ctx context.Context, companyID, teamID int
 	for rows.Next() {
 		player, scanErr := scanPlayer(rows)
 		if scanErr != nil {
-			return nil, scanErr
+			return paginator.Result[entities.Player]{}, scanErr
 		}
 		players = append(players, player)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate players by team: %w", err)
+		return paginator.Result[entities.Player]{}, fmt.Errorf("iterate players by team: %w", err)
 	}
 
-	return players, nil
+	return paginator.Result[entities.Player]{
+		Items: players,
+		Meta:  paginator.BuildMeta(params, totalItems),
+	}, nil
 }
 
 func (r *PlayerRepository) FindByID(ctx context.Context, companyID, teamID, playerID int64) (entities.Player, error) {

@@ -12,6 +12,7 @@ import (
 	teamdomain "backend-sport-team-report-go/internal/modules/team/domain"
 	"backend-sport-team-report-go/internal/modules/team/domain/entities"
 	"backend-sport-team-report-go/internal/platform/database/postgres"
+	"backend-sport-team-report-go/internal/shared/paginator"
 )
 
 type TeamRepository struct {
@@ -52,7 +53,17 @@ func (r *TeamRepository) Create(ctx context.Context, team entities.Team, actorUs
 	return nil
 }
 
-func (r *TeamRepository) ListByCompany(ctx context.Context, companyID int64) ([]entities.Team, error) {
+func (r *TeamRepository) ListByCompany(ctx context.Context, companyID int64, params paginator.Params) (paginator.Result[entities.Team], error) {
+	var totalItems int
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM teams
+		WHERE company_id = $1
+		  AND deleted_at IS NULL
+	`, companyID).Scan(&totalItems); err != nil {
+		return paginator.Result[entities.Team]{}, fmt.Errorf("count teams by company: %w", err)
+	}
+
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT
 			id,
@@ -68,10 +79,12 @@ func (r *TeamRepository) ListByCompany(ctx context.Context, companyID int64) ([]
 		FROM teams
 		WHERE company_id = $1
 		  AND deleted_at IS NULL
-		ORDER BY created_at ASC
-	`, companyID)
+		ORDER BY created_at ASC, id ASC
+		LIMIT $2
+		OFFSET $3
+	`, companyID, params.Limit, params.Offset)
 	if err != nil {
-		return nil, fmt.Errorf("list teams by company: %w", err)
+		return paginator.Result[entities.Team]{}, fmt.Errorf("list teams by company: %w", err)
 	}
 	defer rows.Close()
 
@@ -79,16 +92,19 @@ func (r *TeamRepository) ListByCompany(ctx context.Context, companyID int64) ([]
 	for rows.Next() {
 		team, err := scanTeam(rows)
 		if err != nil {
-			return nil, err
+			return paginator.Result[entities.Team]{}, err
 		}
 		teams = append(teams, team)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate teams by company: %w", err)
+		return paginator.Result[entities.Team]{}, fmt.Errorf("iterate teams by company: %w", err)
 	}
 
-	return teams, nil
+	return paginator.Result[entities.Team]{
+		Items: teams,
+		Meta:  paginator.BuildMeta(params, totalItems),
+	}, nil
 }
 
 func (r *TeamRepository) FindByIDAndCompany(ctx context.Context, teamID, companyID int64) (entities.Team, error) {

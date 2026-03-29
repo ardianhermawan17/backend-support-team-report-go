@@ -10,6 +10,7 @@ import (
 	scheduledomain "backend-sport-team-report-go/internal/modules/schedule/domain"
 	"backend-sport-team-report-go/internal/modules/schedule/domain/entities"
 	"backend-sport-team-report-go/internal/modules/schedule/domain/repositories"
+	"backend-sport-team-report-go/internal/shared/paginator"
 )
 
 type Service struct {
@@ -71,8 +72,8 @@ func (s Service) Create(ctx context.Context, input CreateScheduleInput) (entitie
 	return created, nil
 }
 
-func (s Service) List(ctx context.Context, companyID int64) ([]entities.Schedule, error) {
-	return s.repository.ListByCompany(ctx, companyID)
+func (s Service) List(ctx context.Context, companyID int64, params paginator.Params) (paginator.Result[entities.Schedule], error) {
+	return s.repository.ListByCompany(ctx, companyID, params)
 }
 
 func (s Service) Get(ctx context.Context, companyID, scheduleID int64) (entities.Schedule, error) {

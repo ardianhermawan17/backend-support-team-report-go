@@ -13,6 +13,7 @@ import (
 	scheduledomain "backend-sport-team-report-go/internal/modules/schedule/domain"
 	"backend-sport-team-report-go/internal/modules/schedule/domain/entities"
 	"backend-sport-team-report-go/internal/platform/database/postgres"
+	"backend-sport-team-report-go/internal/shared/paginator"
 )
 
 type ScheduleRepository struct {
@@ -69,7 +70,17 @@ func (r *ScheduleRepository) Create(ctx context.Context, schedule entities.Sched
 	return nil
 }
 
-func (r *ScheduleRepository) ListByCompany(ctx context.Context, companyID int64) ([]entities.Schedule, error) {
+func (r *ScheduleRepository) ListByCompany(ctx context.Context, companyID int64, params paginator.Params) (paginator.Result[entities.Schedule], error) {
+	var totalItems int
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM schedules
+		WHERE company_id = $1
+		  AND deleted_at IS NULL
+	`, companyID).Scan(&totalItems); err != nil {
+		return paginator.Result[entities.Schedule]{}, fmt.Errorf("count schedules by company: %w", err)
+	}
+
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT
 			id,
@@ -84,10 +95,12 @@ func (r *ScheduleRepository) ListByCompany(ctx context.Context, companyID int64)
 		FROM schedules
 		WHERE company_id = $1
 		  AND deleted_at IS NULL
-		ORDER BY match_date ASC, match_time ASC, created_at ASC
-	`, companyID)
+		ORDER BY match_date ASC, match_time ASC, created_at ASC, id ASC
+		LIMIT $2
+		OFFSET $3
+	`, companyID, params.Limit, params.Offset)
 	if err != nil {
-		return nil, fmt.Errorf("list schedules by company: %w", err)
+		return paginator.Result[entities.Schedule]{}, fmt.Errorf("list schedules by company: %w", err)
 	}
 	defer rows.Close()
 
@@ -95,16 +108,19 @@ func (r *ScheduleRepository) ListByCompany(ctx context.Context, companyID int64)
 	for rows.Next() {
 		schedule, scanErr := scanSchedule(rows)
 		if scanErr != nil {
-			return nil, scanErr
+			return paginator.Result[entities.Schedule]{}, scanErr
 		}
 		schedules = append(schedules, schedule)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate schedules by company: %w", err)
+		return paginator.Result[entities.Schedule]{}, fmt.Errorf("iterate schedules by company: %w", err)
 	}
 
-	return schedules, nil
+	return paginator.Result[entities.Schedule]{
+		Items: schedules,
+		Meta:  paginator.BuildMeta(params, totalItems),
+	}, nil
 }
 
 func (r *ScheduleRepository) FindByIDAndCompany(ctx context.Context, scheduleID, companyID int64) (entities.Schedule, error) {

@@ -11,6 +11,7 @@ import (
 	teamdomain "backend-sport-team-report-go/internal/modules/team/domain"
 	"backend-sport-team-report-go/internal/modules/team/domain/entities"
 	"backend-sport-team-report-go/internal/modules/team/domain/repositories"
+	"backend-sport-team-report-go/internal/shared/paginator"
 )
 
 type Service struct {
@@ -79,8 +80,8 @@ func (s Service) Create(ctx context.Context, input CreateTeamInput) (entities.Te
 	return created, nil
 }
 
-func (s Service) List(ctx context.Context, companyID int64) ([]entities.Team, error) {
-	return s.repository.ListByCompany(ctx, companyID)
+func (s Service) List(ctx context.Context, companyID int64, params paginator.Params) (paginator.Result[entities.Team], error) {
+	return s.repository.ListByCompany(ctx, companyID, params)
 }
 
 func (s Service) Get(ctx context.Context, companyID, teamID int64) (entities.Team, error) {

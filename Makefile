@@ -19,10 +19,11 @@ docker-up:
 	docker compose -f deployments/docker/docker-compose.yml up -d
 
 docker-compose-build:
-	docker compose -f deployments/docker/docker-compose.yml up --build -d postgres
+	docker compose -f deployments/docker/docker-compose.yml build migrate seed api
+	docker compose -f deployments/docker/docker-compose.yml up -d postgres
 	docker compose -f deployments/docker/docker-compose.yml run --rm migrate
 	docker compose -f deployments/docker/docker-compose.yml run --rm seed
-	docker compose -f deployments/docker/docker-compose.yml up --build -d api
+	docker compose -f deployments/docker/docker-compose.yml up -d api
 
 docker-up-build: docker-compose-build
 

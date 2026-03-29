@@ -97,6 +97,36 @@ Every endpoint must document:
 - error cases
 - audit side effects
 
+## Pagination contract for list endpoints
+
+The following list endpoints use page/limit pagination:
+
+- `GET /api/v1/teams`
+- `GET /api/v1/teams/{team_id}/players`
+- `GET /api/v1/schedules`
+- `GET /api/v1/reports`
+
+Query parameters:
+
+- `page` (optional, positive integer, default `1`)
+- `limit` (optional, positive integer, default `10`, max `50`)
+
+Response shape for paginated list endpoints:
+
+- `items`: array of resources
+- `meta`: pagination metadata
+  - `page`
+  - `limit`
+  - `total_items`
+  - `total_pages`
+  - `has_next_page`
+  - `has_prev_page`
+
+Validation behavior:
+
+- if `page` or `limit` is not a positive integer, return `400 invalid_request`
+- if `page` is beyond the last page, return `200` with empty `items` and consistent `meta`
+
 ## Teams management endpoints
 
 The teams domain exposes CRUD endpoints inside the authenticated company boundary:

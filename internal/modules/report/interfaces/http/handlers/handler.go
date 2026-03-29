@@ -12,6 +12,7 @@ import (
 	"backend-sport-team-report-go/internal/modules/report/interfaces/http/responses"
 	"backend-sport-team-report-go/internal/shared/logger"
 	sharedmiddleware "backend-sport-team-report-go/internal/shared/middleware"
+	"backend-sport-team-report-go/internal/shared/paginator"
 
 	"github.com/gin-gonic/gin"
 )
@@ -61,14 +62,20 @@ func (h *Handler) List(c *gin.Context) {
 		return
 	}
 
-	reportsData, err := h.service.List(c.Request.Context(), account.CompanyID)
+	params, err := paginator.FromRaw(c.Query("page"), c.Query("limit"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": "page and limit must be positive integers"})
+		return
+	}
+
+	reportsData, err := h.service.List(c.Request.Context(), account.CompanyID, params)
 	if err != nil {
 		h.log.InfoContext(c.Request.Context(), "reports list failed", "path", c.FullPath(), "error", err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal_error", "message": "unable to list reports"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"items": responses.NewReportListResponse(reportsData)})
+	c.JSON(http.StatusOK, gin.H{"items": responses.NewReportListResponse(reportsData.Items), "meta": reportsData.Meta})
 }
 
 func (h *Handler) GetByID(c *gin.Context) {
