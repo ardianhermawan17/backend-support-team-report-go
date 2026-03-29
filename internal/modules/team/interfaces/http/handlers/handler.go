@@ -10,6 +10,7 @@ import (
 	teamdomain "backend-sport-team-report-go/internal/modules/team/domain"
 	"backend-sport-team-report-go/internal/modules/team/interfaces/http/requests"
 	"backend-sport-team-report-go/internal/modules/team/interfaces/http/responses"
+	"backend-sport-team-report-go/internal/shared/httpjson"
 	"backend-sport-team-report-go/internal/shared/logger"
 	sharedmiddleware "backend-sport-team-report-go/internal/shared/middleware"
 	"backend-sport-team-report-go/internal/shared/paginator"
@@ -18,12 +19,13 @@ import (
 )
 
 type Handler struct {
-	log     *logger.Logger
-	service application.Service
+	log          *logger.Logger
+	service      application.Service
+	maxBodyBytes int64
 }
 
-func NewHandler(log *logger.Logger, service application.Service) *Handler {
-	return &Handler{log: log, service: service}
+func NewHandler(log *logger.Logger, service application.Service, maxBodyBytes int64) *Handler {
+	return &Handler{log: log, service: service, maxBodyBytes: maxBodyBytes}
 }
 
 func (h *Handler) Create(c *gin.Context) {
@@ -34,8 +36,8 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 
 	var request requests.UpsertTeamRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": "invalid request body"})
+	if err := httpjson.Bind(c, &request, h.maxBodyBytes); err != nil {
+		httpjson.WriteError(c, err)
 		return
 	}
 
@@ -113,8 +115,8 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	var request requests.UpsertTeamRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": "invalid request body"})
+	if err := httpjson.Bind(c, &request, h.maxBodyBytes); err != nil {
+		httpjson.WriteError(c, err)
 		return
 	}
 

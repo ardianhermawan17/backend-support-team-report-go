@@ -13,8 +13,12 @@ Document the authentication endpoints that issue access tokens and resolve the c
 - response shape: `200 OK` with `access_token`, `token_type`, `expires_at`, `user`, and `company`; `user` includes `id`, `username`, and `email`
 - authorization rule: public endpoint
 - validation rule: both fields are required and `username` must map to an active user-company pair
+- security rule: the endpoint is rate limited per client to slow repeated credential abuse
 - error cases:
   - `400` when the request body is missing `username` or `password`
+  - `400` when the JSON body contains unknown fields or invalid JSON types
+  - `415` when `Content-Type` is not `application/json`
+  - `429` when the login rate limit is exceeded
   - `401` when the credentials are invalid or the account is soft deleted
   - `500` when the auth flow cannot read the account or sign the token
 - audit side effects: no direct write; database-trigger audit behavior remains unchanged because login is a read-only flow

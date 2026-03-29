@@ -15,6 +15,7 @@ import (
 	"backend-sport-team-report-go/internal/config"
 	"backend-sport-team-report-go/internal/platform/database/postgres"
 	"backend-sport-team-report-go/internal/shared/logger"
+	sharedmiddleware "backend-sport-team-report-go/internal/shared/middleware"
 )
 
 func New(cfg config.Config, db *postgres.Connection, log *logger.Logger) *gin.Engine {
@@ -56,17 +57,32 @@ func New(cfg config.Config, db *postgres.Connection, log *logger.Logger) *gin.En
 	})
 
 	if db != nil {
-		authMiddleware := authhttp.RegisterRoutes(v1, db, log, cfg.Auth)
-		if err := teamshttp.RegisterRoutes(v1, db, log, authMiddleware); err != nil {
+		loginRateLimitMiddleware := sharedmiddleware.NewRateLimitMiddleware(
+			log,
+			"auth_login",
+			cfg.Security.RateLimit.Login.MaxRequests,
+			cfg.Security.RateLimit.Login.Window,
+			sharedmiddleware.ClientRouteKey,
+		)
+		writeRateLimitMiddleware := sharedmiddleware.NewRateLimitMiddleware(
+			log,
+			"authenticated_write",
+			cfg.Security.RateLimit.AuthenticatedWrite.MaxRequests,
+			cfg.Security.RateLimit.AuthenticatedWrite.Window,
+			sharedmiddleware.AuthenticatedRouteKey,
+		)
+
+		authMiddleware := authhttp.RegisterRoutes(v1, db, log, cfg.Auth, cfg.Security, loginRateLimitMiddleware)
+		if err := teamshttp.RegisterRoutes(v1, db, log, authMiddleware, cfg.Security, writeRateLimitMiddleware); err != nil {
 			log.InfoContext(context.Background(), "failed to register teams routes", "error", err.Error())
 		}
-		if err := playershttp.RegisterRoutes(v1, db, log, authMiddleware); err != nil {
+		if err := playershttp.RegisterRoutes(v1, db, log, authMiddleware, cfg.Security, writeRateLimitMiddleware); err != nil {
 			log.InfoContext(context.Background(), "failed to register players routes", "error", err.Error())
 		}
-		if err := scheduleshttp.RegisterRoutes(v1, db, log, authMiddleware); err != nil {
+		if err := scheduleshttp.RegisterRoutes(v1, db, log, authMiddleware, cfg.Security, writeRateLimitMiddleware); err != nil {
 			log.InfoContext(context.Background(), "failed to register schedules routes", "error", err.Error())
 		}
-		if err := reportshttp.RegisterRoutes(v1, db, log, authMiddleware); err != nil {
+		if err := reportshttp.RegisterRoutes(v1, db, log, authMiddleware, cfg.Security, writeRateLimitMiddleware); err != nil {
 			log.InfoContext(context.Background(), "failed to register reports routes", "error", err.Error())
 		}
 	}

@@ -59,6 +59,9 @@ Each API must respect company boundaries. A user from one company must not acces
 - Return deterministic error messages for business rule violations.
 - Make write endpoints idempotent whenever reasonable.
 - Include audit context such as actor, company, timestamp, and request correlation id.
+- Reject JSON request bodies with unknown fields, invalid types, multiple JSON objects, or oversized payloads.
+- Apply rate limiting on high-risk endpoints, with login and authenticated write operations protected first.
+- Reject stale schedule updates with `409` instead of silently overwriting a concurrent write.
 
 ## API lifecycle
 
@@ -144,3 +147,5 @@ Rules for these endpoints:
 - Allow access only to teams owned by the authenticated company.
 - Use soft delete for removal.
 - Return deterministic errors for invalid payload, not found, and uniqueness conflicts.
+- Throttle authenticated write requests to reduce abuse without limiting normal reads.
+- Protect duplicate schedule creation with layered concurrency controls: in-process write coordination plus database uniqueness enforcement.

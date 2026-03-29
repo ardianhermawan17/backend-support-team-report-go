@@ -8,3 +8,13 @@ database:
 auth:
   jwt_secret: integration-test-secret
   access_token_ttl: 15m
+
+security:
+  max_json_body_bytes: 1048576
+  rate_limit:
+    login:
+      window: 1m
+      max_requests: 5
+    authenticated_write:
+      window: 1m
+      max_requests: 30

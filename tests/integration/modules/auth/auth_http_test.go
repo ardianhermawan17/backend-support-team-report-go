@@ -17,6 +17,7 @@ import (
 	"backend-sport-team-report-go/internal/shared/logger"
 	appcrypto "backend-sport-team-report-go/pkg/crypto"
 	"backend-sport-team-report-go/tests/integration/testenv"
+	"backend-sport-team-report-go/tests/integration/testhelpers"
 )
 
 func TestAuthLoginAndMeFlow(t *testing.T) {
@@ -215,20 +216,86 @@ func TestAuthMeRejectsSoftDeletedAccount(t *testing.T) {
 	}
 }
 
-func newAuthRouter(t *testing.T, conn *postgres.Connection) http.Handler {
-	t.Helper()
+func TestAuthLoginRejectsUnknownJSONFields(t *testing.T) {
+	env := testenv.StartPostgres(t)
+	conn := env.OpenConnection(t)
+	router := newAuthRouter(t, conn)
 
-	cfg := config.Config{
-		App: config.AppConfig{
-			Name: "soccer-team-report",
-			Env:  config.EnvTest,
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"admin-login","password":"secret","role":"owner"}`))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("expected bad request status %d, got %d with body %s", http.StatusBadRequest, response.Code, response.Body.String())
+	}
+}
+
+func TestAuthLoginRateLimitRejectsRepeatedRequests(t *testing.T) {
+	env := testenv.StartPostgres(t)
+	conn := env.OpenConnection(t)
+	repo := authpersistence.NewAccountRepository(conn)
+	security := testhelpers.DefaultTestConfig().Security
+	security.RateLimit.Login.Window = time.Minute
+	security.RateLimit.Login.MaxRequests = 2
+	router := newAuthRouterWithSecurity(t, conn, security)
+
+	hash, err := appcrypto.HashPassword("correct-password")
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+
+	account := entities.CompanyAdminAccount{
+		User: entities.User{
+			ID:           7100000000104,
+			Username:     "admin-throttle",
+			Email:        "admin-throttle@example.test",
+			PasswordHash: hash,
 		},
-		Database: config.DatabaseConfig{},
-		Auth: config.AuthConfig{
-			JWTSecret:      "integration-test-secret",
-			AccessTokenTTL: 15 * time.Minute,
+		Company: entities.Company{
+			ID:   7200000000104,
+			Name: "Throttle FC",
 		},
 	}
 
+	if err := repo.Create(context.Background(), account); err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	for attempt := 1; attempt <= 3; attempt++ {
+		request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"admin-throttle","password":"wrong-password"}`))
+		request.Header.Set("Content-Type", "application/json")
+		request.RemoteAddr = "198.51.100.20:1234"
+		response := httptest.NewRecorder()
+
+		router.ServeHTTP(response, request)
+
+		switch attempt {
+		case 1, 2:
+			if response.Code != http.StatusUnauthorized {
+				t.Fatalf("expected unauthorized status %d on attempt %d, got %d with body %s", http.StatusUnauthorized, attempt, response.Code, response.Body.String())
+			}
+		case 3:
+			if response.Code != http.StatusTooManyRequests {
+				t.Fatalf("expected too many requests status %d on attempt %d, got %d with body %s", http.StatusTooManyRequests, attempt, response.Code, response.Body.String())
+			}
+			if response.Header().Get("Retry-After") == "" {
+				t.Fatal("expected Retry-After header on throttled login response")
+			}
+		}
+	}
+}
+
+func newAuthRouter(t *testing.T, conn *postgres.Connection) http.Handler {
+	t.Helper()
+	return newAuthRouterWithSecurity(t, conn, testhelpers.DefaultTestConfig().Security)
+}
+
+func newAuthRouterWithSecurity(t *testing.T, conn *postgres.Connection, security config.SecurityConfig) http.Handler {
+	t.Helper()
+
+	cfg := testhelpers.DefaultTestConfig()
+	cfg.Security = security
 	return ginrouter.New(cfg, conn, logger.New(cfg.App.Name, cfg.App.Env))
 }

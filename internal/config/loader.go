@@ -54,6 +54,19 @@ func defaultConfig() Config {
 			JWTSecret:      "local-dev-only-change-me",
 			AccessTokenTTL: 15 * time.Minute,
 		},
+		Security: SecurityConfig{
+			MaxJSONBodyBytes: 1 << 20,
+			RateLimit: RateLimitConfig{
+				Login: RateLimitRule{
+					Window:      time.Minute,
+					MaxRequests: 5,
+				},
+				AuthenticatedWrite: RateLimitRule{
+					Window:      time.Minute,
+					MaxRequests: 30,
+				},
+			},
+		},
 	}
 }
 

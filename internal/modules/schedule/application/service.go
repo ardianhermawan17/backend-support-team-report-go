@@ -16,6 +16,7 @@ import (
 type Service struct {
 	repository repositories.ScheduleRepository
 	idGen      ports.IDGenerator
+	writeGate  *scheduleWriteGate
 }
 
 type CreateScheduleInput struct {
@@ -38,7 +39,7 @@ type UpdateScheduleInput struct {
 }
 
 func NewService(repository repositories.ScheduleRepository, idGen ports.IDGenerator) Service {
-	return Service{repository: repository, idGen: idGen}
+	return Service{repository: repository, idGen: idGen, writeGate: newScheduleWriteGate()}
 }
 
 func (s Service) Create(ctx context.Context, input CreateScheduleInput) (entities.Schedule, error) {
@@ -46,25 +47,35 @@ func (s Service) Create(ctx context.Context, input CreateScheduleInput) (entitie
 		return entities.Schedule{}, err
 	}
 
-	id, err := s.idGen.NewID()
-	if err != nil {
-		return entities.Schedule{}, fmt.Errorf("generate schedule id: %w", err)
-	}
+	gateKey := scheduleCreateGateKey(input.CompanyID, input.HomeTeamID, input.GuestTeamID, input.MatchDate, input.MatchTime)
+	var created entities.Schedule
+	err := s.writeGate.WithKey(ctx, gateKey, func() error {
+		id, err := s.idGen.NewID()
+		if err != nil {
+			return fmt.Errorf("generate schedule id: %w", err)
+		}
 
-	schedule := entities.Schedule{
-		ID:          id,
-		CompanyID:   input.CompanyID,
-		MatchDate:   input.MatchDate,
-		MatchTime:   input.MatchTime,
-		HomeTeamID:  input.HomeTeamID,
-		GuestTeamID: input.GuestTeamID,
-	}
+		schedule := entities.Schedule{
+			ID:          id,
+			CompanyID:   input.CompanyID,
+			MatchDate:   input.MatchDate,
+			MatchTime:   input.MatchTime,
+			HomeTeamID:  input.HomeTeamID,
+			GuestTeamID: input.GuestTeamID,
+		}
 
-	if err := s.repository.Create(ctx, schedule, input.ActorUserID); err != nil {
-		return entities.Schedule{}, err
-	}
+		if err := s.repository.Create(ctx, schedule, input.ActorUserID); err != nil {
+			return err
+		}
 
-	created, err := s.repository.FindByIDAndCompany(ctx, schedule.ID, schedule.CompanyID)
+		createdSchedule, err := s.repository.FindByIDAndCompany(ctx, schedule.ID, schedule.CompanyID)
+		if err != nil {
+			return err
+		}
+
+		created = createdSchedule
+		return nil
+	})
 	if err != nil {
 		return entities.Schedule{}, err
 	}
@@ -120,7 +131,7 @@ func (s Service) Delete(ctx context.Context, companyID, scheduleID, actorUserID 
 }
 
 func IsConflictError(err error) bool {
-	return errors.Is(err, scheduledomain.ErrScheduleAlreadyExists)
+	return errors.Is(err, scheduledomain.ErrScheduleAlreadyExists) || errors.Is(err, scheduledomain.ErrScheduleConcurrentModification)
 }
 
 func validateInput(matchDate, matchTime time.Time, homeTeamID, guestTeamID int64) error {

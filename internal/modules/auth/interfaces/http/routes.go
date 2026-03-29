@@ -12,15 +12,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(v1 *gin.RouterGroup, db *postgres.Connection, log *logger.Logger, cfg config.AuthConfig) gin.HandlerFunc {
+func RegisterRoutes(v1 *gin.RouterGroup, db *postgres.Connection, log *logger.Logger, cfg config.AuthConfig, security config.SecurityConfig, loginRateLimitMiddleware gin.HandlerFunc) gin.HandlerFunc {
 	repository := authpersistence.NewAccountRepository(db)
 	tokens := authjwt.NewTokenService(cfg)
 	loginHandler := applicationhandlers.NewLoginHandler(repository, tokens)
 	currentAccountHandler := applicationhandlers.NewCurrentAccountHandler(repository)
-	httpHandler := interfacehandlers.NewHandler(log, loginHandler, currentAccountHandler, tokens)
+	httpHandler := interfacehandlers.NewHandler(log, loginHandler, currentAccountHandler, tokens, security.MaxJSONBodyBytes)
 
 	authGroup := v1.Group("/auth")
-	authGroup.POST("/login", httpHandler.Login)
+	authGroup.POST("/login", loginRateLimitMiddleware, httpHandler.Login)
 	authGroup.GET("/me", httpHandler.RequireAuthentication(), httpHandler.Me)
 
 	return httpHandler.RequireAuthentication()

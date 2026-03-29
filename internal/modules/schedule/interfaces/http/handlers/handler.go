@@ -11,6 +11,7 @@ import (
 	scheduledomain "backend-sport-team-report-go/internal/modules/schedule/domain"
 	"backend-sport-team-report-go/internal/modules/schedule/interfaces/http/requests"
 	"backend-sport-team-report-go/internal/modules/schedule/interfaces/http/responses"
+	"backend-sport-team-report-go/internal/shared/httpjson"
 	"backend-sport-team-report-go/internal/shared/logger"
 	sharedmiddleware "backend-sport-team-report-go/internal/shared/middleware"
 	"backend-sport-team-report-go/internal/shared/paginator"
@@ -19,12 +20,13 @@ import (
 )
 
 type Handler struct {
-	log     *logger.Logger
-	service application.Service
+	log          *logger.Logger
+	service      application.Service
+	maxBodyBytes int64
 }
 
-func NewHandler(log *logger.Logger, service application.Service) *Handler {
-	return &Handler{log: log, service: service}
+func NewHandler(log *logger.Logger, service application.Service, maxBodyBytes int64) *Handler {
+	return &Handler{log: log, service: service, maxBodyBytes: maxBodyBytes}
 }
 
 func (h *Handler) Create(c *gin.Context) {
@@ -35,8 +37,8 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 
 	var request requests.UpsertScheduleRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": "invalid request body"})
+	if err := httpjson.Bind(c, &request, h.maxBodyBytes); err != nil {
+		httpjson.WriteError(c, err)
 		return
 	}
 
@@ -118,8 +120,8 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	var request requests.UpsertScheduleRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": "invalid request body"})
+	if err := httpjson.Bind(c, &request, h.maxBodyBytes); err != nil {
+		httpjson.WriteError(c, err)
 		return
 	}
 
@@ -182,6 +184,9 @@ func (h *Handler) handleError(c *gin.Context, err error, logMessage string) {
 		return
 	case errors.Is(err, scheduledomain.ErrScheduleAlreadyExists):
 		c.JSON(http.StatusConflict, gin.H{"error": "schedule_conflict", "message": "schedule already exists for this match date, time, and team pairing"})
+		return
+	case errors.Is(err, scheduledomain.ErrScheduleConcurrentModification):
+		c.JSON(http.StatusConflict, gin.H{"error": "schedule_conflict", "message": "schedule was modified by another request; retry with the latest data"})
 		return
 	default:
 		h.log.InfoContext(c.Request.Context(), logMessage, "path", c.FullPath(), "error", err.Error())

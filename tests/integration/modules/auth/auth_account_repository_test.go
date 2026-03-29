@@ -84,6 +84,32 @@ func TestAccountRepositoryFindByUsernameIgnoresSoftDeletedAccounts(t *testing.T)
 	assertAuditActionCount(t, env.DB, "companies", "SOFT_DELETE", 1)
 }
 
+func TestAccountRepositoryFindByUsernameTreatsInjectionPayloadAsData(t *testing.T) {
+	env := testenv.StartPostgres(t)
+	conn := env.OpenConnection(t)
+	repo := authpersistence.NewAccountRepository(conn)
+
+	account := newAccount(7100000000012, 7200000000012, "admin-sqli", "SQLi FC")
+
+	if err := repo.Create(context.Background(), account); err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	_, err := repo.FindByUsername(context.Background(), `admin-sqli' OR '1'='1`)
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("expected sql.ErrNoRows for injection payload, got %v", err)
+	}
+
+	stored, err := repo.FindByUsername(context.Background(), account.User.Username)
+	if err != nil {
+		t.Fatalf("find account after injection lookup: %v", err)
+	}
+
+	if stored.User.ID != account.User.ID {
+		t.Fatalf("expected stored user id %d, got %d", account.User.ID, stored.User.ID)
+	}
+}
+
 func TestAccountRepositoryCreateAllowsReuseAfterSoftDelete(t *testing.T) {
 	env := testenv.StartPostgres(t)
 	conn := env.OpenConnection(t)
@@ -122,6 +148,36 @@ func TestAccountRepositoryCreateAllowsReuseAfterSoftDelete(t *testing.T) {
 	assertAuditActionCount(t, env.DB, "companies", "SOFT_DELETE", 1)
 	assertAuditLogCount(t, env.DB, "users", 3)
 	assertAuditLogCount(t, env.DB, "companies", 3)
+}
+
+func TestAccountRepositoryFindByUsernameTreatsMaliciousInputAsData(t *testing.T) {
+	env := testenv.StartPostgres(t)
+	conn := env.OpenConnection(t)
+	repo := authpersistence.NewAccountRepository(conn)
+
+	account := newAccount(7100000000041, 7200000000041, "admin-safe-query", "Safe Query FC")
+	if err := repo.Create(context.Background(), account); err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	var beforeCount int
+	if err := env.DB.QueryRow(`SELECT COUNT(*) FROM users WHERE deleted_at IS NULL`).Scan(&beforeCount); err != nil {
+		t.Fatalf("count users before malicious lookup: %v", err)
+	}
+
+	_, err := repo.FindByUsername(context.Background(), `' OR 1=1 --`)
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("expected sql.ErrNoRows for malicious username lookup, got %v", err)
+	}
+
+	var afterCount int
+	if err := env.DB.QueryRow(`SELECT COUNT(*) FROM users WHERE deleted_at IS NULL`).Scan(&afterCount); err != nil {
+		t.Fatalf("count users after malicious lookup: %v", err)
+	}
+
+	if afterCount != beforeCount {
+		t.Fatalf("expected user count to remain %d, got %d", beforeCount, afterCount)
+	}
 }
 
 func newAccount(userID, companyID int64, username, companyName string) entities.CompanyAdminAccount {

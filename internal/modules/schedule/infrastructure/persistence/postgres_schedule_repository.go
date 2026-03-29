@@ -168,6 +168,25 @@ func (r *ScheduleRepository) Update(ctx context.Context, schedule entities.Sched
 		return fmt.Errorf("set audit actor for schedule update: %w", err)
 	}
 
+	var currentUpdatedAt time.Time
+	if err = tx.QueryRowContext(ctx, `
+		SELECT updated_at
+		FROM schedules
+		WHERE id = $1
+		  AND company_id = $2
+		  AND deleted_at IS NULL
+		FOR UPDATE
+	`, schedule.ID, schedule.CompanyID).Scan(&currentUpdatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return scheduledomain.ErrScheduleNotFound
+		}
+		return fmt.Errorf("lock schedule for update: %w", err)
+	}
+
+	if !currentUpdatedAt.Equal(schedule.UpdatedAt) {
+		return scheduledomain.ErrScheduleConcurrentModification
+	}
+
 	result, err := tx.ExecContext(ctx, `
 		UPDATE schedules s
 		SET
@@ -195,9 +214,6 @@ func (r *ScheduleRepository) Update(ctx context.Context, schedule entities.Sched
 		return fmt.Errorf("read schedule update affected rows: %w", err)
 	}
 	if rowsAffected == 0 {
-		if !r.scheduleExists(ctx, schedule.ID, schedule.CompanyID) {
-			return scheduledomain.ErrScheduleNotFound
-		}
 		return scheduledomain.ErrScheduleTeamNotFound
 	}
 
@@ -306,8 +322,13 @@ func (r *ScheduleRepository) scheduleExists(ctx context.Context, scheduleID, com
 func classifyWriteError(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
-		if pgErr.Code == "23505" && pgErr.ConstraintName == "uq_schedules_match_active" {
-			return scheduledomain.ErrScheduleAlreadyExists
+		switch pgErr.Code {
+		case "23505":
+			if pgErr.ConstraintName == "uq_schedules_match_active" {
+				return scheduledomain.ErrScheduleAlreadyExists
+			}
+		case "40001", "40P01":
+			return scheduledomain.ErrScheduleConcurrentModification
 		}
 	}
 
