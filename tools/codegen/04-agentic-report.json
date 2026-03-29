@@ -1,0 +1,28 @@
+{
+  "report_number": "04",
+  "timestamp": "2026-03-27T12:30:04Z",
+  "action_type": "soft_delete_database_update",
+  "summary": "Updated the documented schema and executable SQL to use soft delete for auditable entities, added active-row unique indexes plus audit/cascade behavior, and aligned the auth repository with active-account reads.",
+  "files_created": [
+    "tools/codegen/04-agentic-report.json"
+  ],
+  "files_changed": [
+    "docs/architecture/schema.dbml",
+    "docs/architecture/initial.db",
+    "internal/platform/database/migrations/001_initial.sql",
+    "internal/modules/auth/infrastructure/persistence/postgres_account_repository.go",
+    "tests/integration/auth_account_repository_test.go"
+  ],
+  "files_deleted": [],
+  "reason": "Task 03 required the database design to become soft-delete aware without breaking auditability, uniqueness guarantees, or the currently implemented auth flow.",
+  "risk": "Medium. The change reshapes database constraints and trigger behavior, so query paths and future delete flows must consistently treat `deleted_at IS NULL` as the active-row contract.",
+  "tests": [
+    "go test ./tests/integration -run AccountRepository -count=1",
+    "go test ./..."
+  ],
+  "notes": [
+    "Soft delete was added to users, companies, images, teams, players, schedules, and reports; logs remain append-only.",
+    "Database uniqueness now applies only to active rows via partial unique indexes, allowing identifier reuse after soft deletion.",
+    "Audit triggers now distinguish UPDATE from SOFT_DELETE and RESTORE, and the auth repository ignores soft-deleted user/company rows."
+  ]
+}

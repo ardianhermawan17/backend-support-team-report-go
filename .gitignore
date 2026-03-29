@@ -1,5 +1,5 @@
 bin/
 .env
 .idea/
-docs/
-tools/codegen/
+# docs/
+# tools/codegen/

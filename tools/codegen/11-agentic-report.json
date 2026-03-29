@@ -1,0 +1,17 @@
+{
+  "report_number": "11",
+  "timestamp": "2026-03-29T04:43:08Z",
+  "action_type": "CREATE",
+  "summary": "Generated Postman Collection v2.1 covering all API routes: health, auth, teams, players, schedules, and reports.",
+  "files_created": [
+    "postman-api.json",
+    "tools/postman/soccer-team-report.postman_collection.json",
+    "tools/codegen/11-agentic-report.json"
+  ],
+  "files_changed": [],
+  "files_deleted": [],
+  "reason": "No machine-readable API documentation existed. The Postman collection allows developers and testers to exercise all endpoints without manual configuration. A root-level copy was added because the task request explicitly asked for postman-api.json in the application root.",
+  "risk": "NONE — this task creates documentation artifacts only. No source code, migrations, or runtime behavior were modified.",
+  "tests": "Validated both JSON files syntactically and verified the collection structure against the registered routes and request/response contracts.",
+  "notes": "Import either Postman collection file into Postman, set base_url if needed, and run Login first to populate access_token automatically. The canonical task output remains tools/postman/soccer-team-report.postman_collection.json."
+}
