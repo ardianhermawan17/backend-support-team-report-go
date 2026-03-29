@@ -7,17 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
-
-	authdtos "backend-sport-team-report-go/internal/modules/auth/application/dtos"
 	"backend-sport-team-report-go/internal/modules/schedule/application"
 	scheduledomain "backend-sport-team-report-go/internal/modules/schedule/domain"
 	"backend-sport-team-report-go/internal/modules/schedule/interfaces/http/requests"
 	"backend-sport-team-report-go/internal/modules/schedule/interfaces/http/responses"
 	"backend-sport-team-report-go/internal/shared/logger"
-)
+	sharedmiddleware "backend-sport-team-report-go/internal/shared/middleware"
 
-const authenticatedAccountContextKey = "auth.account"
+	"github.com/gin-gonic/gin"
+)
 
 type Handler struct {
 	log     *logger.Logger
@@ -29,7 +27,7 @@ func NewHandler(log *logger.Logger, service application.Service) *Handler {
 }
 
 func (h *Handler) Create(c *gin.Context) {
-	account, ok := authenticatedAccount(c)
+	account, ok := sharedmiddleware.AuthenticatedAccount(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized", "message": "authentication is required"})
 		return
@@ -63,7 +61,7 @@ func (h *Handler) Create(c *gin.Context) {
 }
 
 func (h *Handler) List(c *gin.Context) {
-	account, ok := authenticatedAccount(c)
+	account, ok := sharedmiddleware.AuthenticatedAccount(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized", "message": "authentication is required"})
 		return
@@ -80,7 +78,7 @@ func (h *Handler) List(c *gin.Context) {
 }
 
 func (h *Handler) GetByID(c *gin.Context) {
-	account, ok := authenticatedAccount(c)
+	account, ok := sharedmiddleware.AuthenticatedAccount(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized", "message": "authentication is required"})
 		return
@@ -101,7 +99,7 @@ func (h *Handler) GetByID(c *gin.Context) {
 }
 
 func (h *Handler) Update(c *gin.Context) {
-	account, ok := authenticatedAccount(c)
+	account, ok := sharedmiddleware.AuthenticatedAccount(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized", "message": "authentication is required"})
 		return
@@ -141,7 +139,7 @@ func (h *Handler) Update(c *gin.Context) {
 }
 
 func (h *Handler) Delete(c *gin.Context) {
-	account, ok := authenticatedAccount(c)
+	account, ok := sharedmiddleware.AuthenticatedAccount(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized", "message": "authentication is required"})
 		return
@@ -208,18 +206,4 @@ func parseScheduleDateTime(c *gin.Context, matchDateInput, matchTimeInput string
 	}
 
 	return matchDate, matchTime, true
-}
-
-func authenticatedAccount(c *gin.Context) (authdtos.AuthenticatedAccount, bool) {
-	value, ok := c.Get(authenticatedAccountContextKey)
-	if !ok {
-		return authdtos.AuthenticatedAccount{}, false
-	}
-
-	account, ok := value.(authdtos.AuthenticatedAccount)
-	if !ok {
-		return authdtos.AuthenticatedAccount{}, false
-	}
-
-	return account, true
 }
