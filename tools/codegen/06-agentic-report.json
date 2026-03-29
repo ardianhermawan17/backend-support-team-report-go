@@ -1,0 +1,33 @@
+{
+  "report_number": "06",
+  "timestamp": "2026-03-27T14:58:42Z",
+  "action_type": "soft_delete_full_table_alignment",
+  "summary": "Extended soft delete to every table including logs, turned `internal/platform/database/migrations/001_initial.sql` into the single Docker/runtime SQL source with upgrade-safe `ALTER` steps for existing databases, and added integration coverage that proves schema-wide soft delete behavior works.",
+  "files_created": [
+    "tests/integration/soft_delete_schema_test.go",
+    "tools/codegen/06-agentic-report.json"
+  ],
+  "files_changed": [
+    "docs/architecture/schema.dbml",
+    "docs/architecture/initial.db",
+    "internal/platform/database/migrations/001_initial.sql",
+    "deployments/docker/docker-compose.yml",
+    "README.md"
+  ],
+  "files_deleted": [
+    "deployments/docker/postgres/init/001_initial.sql"
+  ],
+  "reason": "The running Docker database was still bootstrapping from a stale SQL copy, and the user required soft delete to be present across all tables with explicit verification that the behavior succeeds for both fresh and already-created schemas.",
+  "risk": "Medium. Docker startup now depends on the migration container completing successfully, and the single SQL file now has to preserve both fresh bootstrap behavior and idempotent upgrade behavior for existing databases.",
+  "tests": [
+    "docker compose -f deployments/docker/docker-compose.yml config",
+    "go test ./tests/integration -run SoftDeleteAppliedToAllTables -count=1",
+    "go test ./..."
+  ],
+  "notes": [
+    "`internal/platform/database/migrations/001_initial.sql` is now the single SQL source used by application migrations; the duplicate Docker init SQL was removed.",
+    "The API service now waits for the `migrate` container to complete successfully before starting.",
+    "The migration SQL now includes `ALTER TYPE`, `ADD COLUMN IF NOT EXISTS`, and constraint cleanup so rerunning it updates an existing database that was created before soft delete support.",
+    "The new integration test verifies every table exposes `deleted_at`, user soft delete cascades through the domain tables, and a logs row can also be soft deleted directly."
+  ]
+}
