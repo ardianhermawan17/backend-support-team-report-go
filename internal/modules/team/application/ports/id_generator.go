@@ -1,5 +1,5 @@
 package ports
 
-type IDGenerator interface {
-	NewID() (int64, error)
-}
+import "backend-sport-team-report-go/internal/platform/idgenerator"
+
+type IDGenerator = idgenerator.IDGenerator

@@ -5,18 +5,16 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
-
-	"backend-sport-team-report-go/internal/modules/auth/application/dtos"
 	authapplication "backend-sport-team-report-go/internal/modules/auth/application/handlers"
 	"backend-sport-team-report-go/internal/modules/auth/application/ports"
 	authdomain "backend-sport-team-report-go/internal/modules/auth/domain"
 	"backend-sport-team-report-go/internal/modules/auth/interfaces/http/requests"
 	"backend-sport-team-report-go/internal/modules/auth/interfaces/http/responses"
 	"backend-sport-team-report-go/internal/shared/logger"
-)
+	sharedmiddleware "backend-sport-team-report-go/internal/shared/middleware"
 
-const authenticatedAccountContextKey = "auth.account"
+	"github.com/gin-gonic/gin"
+)
 
 type Handler struct {
 	log            *logger.Logger
@@ -63,13 +61,7 @@ func (h *Handler) Login(c *gin.Context) {
 }
 
 func (h *Handler) Me(c *gin.Context) {
-	account, ok := c.Get(authenticatedAccountContextKey)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized", "message": "authentication is required"})
-		return
-	}
-
-	authenticatedAccount, ok := account.(dtos.AuthenticatedAccount)
+	authenticatedAccount, ok := sharedmiddleware.AuthenticatedAccount(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized", "message": "authentication is required"})
 		return
@@ -104,7 +96,7 @@ func (h *Handler) RequireAuthentication() gin.HandlerFunc {
 			return
 		}
 
-		c.Set(authenticatedAccountContextKey, account)
+		sharedmiddleware.SetAuthenticatedAccount(c, account)
 		c.Next()
 	}
 }
