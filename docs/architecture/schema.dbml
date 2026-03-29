@@ -2,6 +2,7 @@
 
 (id) [bigint] <> <PK, snowflake id>
 (username) [varchar(64)] <> <active UNIQUE when deleted_at is null>
+(email) [varchar(255)] <> <not blank>
 (password_hash) [varchar(255)]
 (created_at) [timestamptz]
 (updated_at) [timestamptz]

@@ -30,9 +30,9 @@ func (r *AccountRepository) Create(ctx context.Context, account entities.Company
 	}()
 
 	if _, err = tx.ExecContext(ctx, `
-		INSERT INTO users (id, username, password_hash)
-		VALUES ($1, $2, $3)
-	`, account.User.ID, account.User.Username, account.User.PasswordHash); err != nil {
+		INSERT INTO users (id, username, email, password_hash)
+		VALUES ($1, $2, $3, $4)
+	`, account.User.ID, account.User.Username, account.User.Email, account.User.PasswordHash); err != nil {
 		return fmt.Errorf("insert user: %w", err)
 	}
 
@@ -61,6 +61,7 @@ func (r *AccountRepository) FindByUsername(ctx context.Context, username string)
 		SELECT
 			u.id,
 			u.username,
+			u.email,
 			u.password_hash,
 			u.created_at,
 			u.updated_at,
@@ -77,6 +78,7 @@ func (r *AccountRepository) FindByUsername(ctx context.Context, username string)
 		`, username).Scan(
 		&account.User.ID,
 		&account.User.Username,
+		&account.User.Email,
 		&account.User.PasswordHash,
 		&account.User.CreatedAt,
 		&account.User.UpdatedAt,

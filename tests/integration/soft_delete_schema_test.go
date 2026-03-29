@@ -24,6 +24,7 @@ func TestSoftDeleteAppliedToAllTables(t *testing.T) {
 		User: entities.User{
 			ID:           8100000000001,
 			Username:     "admin-soft-delete",
+			Email:        "admin-soft-delete@example.test",
 			PasswordHash: "hashed-password",
 		},
 		Company: entities.Company{

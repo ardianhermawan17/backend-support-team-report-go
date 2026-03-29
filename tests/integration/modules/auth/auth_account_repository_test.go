@@ -39,8 +39,25 @@ func TestAccountRepositoryCreateAndFindByUsername(t *testing.T) {
 		t.Fatalf("expected company user id %d, got %d", account.User.ID, stored.Company.UserID)
 	}
 
+	if stored.User.Email != account.User.Email {
+		t.Fatalf("expected user email %q, got %q", account.User.Email, stored.User.Email)
+	}
+
 	assertAuditLogCount(t, env.DB, "users", 1)
 	assertAuditLogCount(t, env.DB, "companies", 1)
+}
+
+func TestAccountRepositoryCreateRequiresEmail(t *testing.T) {
+	env := testenv.StartPostgres(t)
+	conn := env.OpenConnection(t)
+	repo := authpersistence.NewAccountRepository(conn)
+
+	account := newAccount(7100000000031, 7200000000031, "admin-missing-email", "Missing Email FC")
+	account.User.Email = ""
+
+	if err := repo.Create(context.Background(), account); err == nil {
+		t.Fatal("expected create account without email to fail")
+	}
 }
 
 func TestAccountRepositoryFindByUsernameIgnoresSoftDeletedAccounts(t *testing.T) {
@@ -112,6 +129,7 @@ func newAccount(userID, companyID int64, username, companyName string) entities.
 		User: entities.User{
 			ID:           userID,
 			Username:     username,
+			Email:        username + "@example.test",
 			PasswordHash: "hashed-password",
 		},
 		Company: entities.Company{

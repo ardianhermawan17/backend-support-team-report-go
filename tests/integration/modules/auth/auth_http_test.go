@@ -35,6 +35,7 @@ func TestAuthLoginAndMeFlow(t *testing.T) {
 		User: entities.User{
 			ID:           7100000000101,
 			Username:     "admin-login",
+			Email:        "admin-login@example.test",
 			PasswordHash: hash,
 		},
 		Company: entities.Company{
@@ -64,6 +65,7 @@ func TestAuthLoginAndMeFlow(t *testing.T) {
 		User        struct {
 			ID       int64  `json:"id"`
 			Username string `json:"username"`
+			Email    string `json:"email"`
 		} `json:"user"`
 		Company struct {
 			ID   int64  `json:"id"`
@@ -82,7 +84,7 @@ func TestAuthLoginAndMeFlow(t *testing.T) {
 		t.Fatalf("expected Bearer token type, got %q", loginPayload.TokenType)
 	}
 
-	if loginPayload.User.ID != account.User.ID || loginPayload.User.Username != account.User.Username {
+	if loginPayload.User.ID != account.User.ID || loginPayload.User.Username != account.User.Username || loginPayload.User.Email != account.User.Email {
 		t.Fatalf("unexpected user in login response: %#v", loginPayload.User)
 	}
 
@@ -98,6 +100,20 @@ func TestAuthLoginAndMeFlow(t *testing.T) {
 
 	if meResponse.Code != http.StatusOK {
 		t.Fatalf("expected me status %d, got %d with body %s", http.StatusOK, meResponse.Code, meResponse.Body.String())
+	}
+
+	var mePayload struct {
+		User struct {
+			ID       int64  `json:"id"`
+			Username string `json:"username"`
+			Email    string `json:"email"`
+		} `json:"user"`
+	}
+	if err := json.Unmarshal(meResponse.Body.Bytes(), &mePayload); err != nil {
+		t.Fatalf("unmarshal me response: %v", err)
+	}
+	if mePayload.User.Email != account.User.Email {
+		t.Fatalf("expected me email %q, got %q", account.User.Email, mePayload.User.Email)
 	}
 }
 
@@ -116,6 +132,7 @@ func TestAuthLoginRejectsInvalidCredentials(t *testing.T) {
 		User: entities.User{
 			ID:           7100000000102,
 			Username:     "admin-invalid",
+			Email:        "admin-invalid@example.test",
 			PasswordHash: hash,
 		},
 		Company: entities.Company{
@@ -154,6 +171,7 @@ func TestAuthMeRejectsSoftDeletedAccount(t *testing.T) {
 		User: entities.User{
 			ID:           7100000000103,
 			Username:     "admin-soft-delete-login",
+			Email:        "admin-soft-delete-login@example.test",
 			PasswordHash: hash,
 		},
 		Company: entities.Company{

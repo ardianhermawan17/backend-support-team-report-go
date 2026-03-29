@@ -10,7 +10,7 @@ Document the authentication endpoints that issue access tokens and resolve the c
 
 - purpose: authenticate one active company administrator account
 - request shape: JSON body with `username` and `password`
-- response shape: `200 OK` with `access_token`, `token_type`, `expires_at`, `user`, and `company`
+- response shape: `200 OK` with `access_token`, `token_type`, `expires_at`, `user`, and `company`; `user` includes `id`, `username`, and `email`
 - authorization rule: public endpoint
 - validation rule: both fields are required and `username` must map to an active user-company pair
 - error cases:
@@ -23,7 +23,7 @@ Document the authentication endpoints that issue access tokens and resolve the c
 
 - purpose: return the authenticated company administrator identity bound to the bearer token
 - request shape: `Authorization: Bearer <token>` header
-- response shape: `200 OK` with `user` and `company`
+- response shape: `200 OK` with `user` and `company`; `user` includes `id`, `username`, and `email`
 - authorization rule: requires a valid bearer token signed by the API and an active underlying account
 - validation rule: token must be well formed, signed with the configured secret, unexpired, and still map to an active account row
 - error cases:

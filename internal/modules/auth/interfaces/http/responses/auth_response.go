@@ -9,6 +9,7 @@ import (
 type AuthAccountResponse struct {
 	ID       int64  `json:"id"`
 	Username string `json:"username"`
+	Email    string `json:"email"`
 }
 
 type AuthCompanyResponse struct {
@@ -50,6 +51,7 @@ func newAccountResponse(account dtos.AuthenticatedAccount) AuthAccountResponse {
 	return AuthAccountResponse{
 		ID:       account.UserID,
 		Username: account.Username,
+		Email:    account.Email,
 	}
 }
 

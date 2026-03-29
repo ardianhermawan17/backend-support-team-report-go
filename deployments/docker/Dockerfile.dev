@@ -6,5 +6,6 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
 RUN --mount=type=cache,target=/root/.cache/go-build \
 	go build -o /bin/api ./cmd/api && \
-	go build -o /bin/migrate ./cmd/migrate
+	go build -o /bin/migrate ./cmd/migrate && \
+	go build -o /bin/seeding ./cmd/seeding
 CMD ["/bin/api"]

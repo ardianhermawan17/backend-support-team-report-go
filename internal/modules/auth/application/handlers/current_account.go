@@ -40,6 +40,7 @@ func toAuthenticatedAccount(account entities.CompanyAdminAccount) dtos.Authentic
 	return dtos.AuthenticatedAccount{
 		UserID:      account.User.ID,
 		Username:    account.User.Username,
+		Email:       account.User.Email,
 		CompanyID:   account.Company.ID,
 		CompanyName: account.Company.Name,
 	}
