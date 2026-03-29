@@ -1,0 +1,718 @@
+{
+  "info": {
+    "_postman_id": "6c0f6b31-7f31-4b18-b0b2-c8d4d9df2d6a",
+    "name": "Soccer Team Report API",
+    "description": "Complete API collection for the soccer-team-report platform. Covers authentication, team management, player management, match scheduling, and match reports.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string",
+      "description": "API base URL"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string",
+      "description": "Filled automatically by the Login request test script"
+    },
+    {
+      "key": "team_id",
+      "value": "1",
+      "type": "string",
+      "description": "Example team ID"
+    },
+    {
+      "key": "player_id",
+      "value": "1",
+      "type": "string",
+      "description": "Example player ID"
+    },
+    {
+      "key": "schedule_id",
+      "value": "1",
+      "type": "string",
+      "description": "Example schedule ID"
+    },
+    {
+      "key": "report_id",
+      "value": "1",
+      "type": "string",
+      "description": "Example report ID"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health"
+              ]
+            },
+            "description": "Success: 200 OK with {status, service, database, checked_at}. May return 503 Service Unavailable with the same health payload when the database is unavailable. Common error shape when applicable: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    pm.collectionVariables.set(\"access_token\", body.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Success: 200 OK with {access_token, token_type, expires_at, user, company}. Common errors: 400 invalid_request, 401 invalid_credentials, 500 internal_error. 404 and 409 are not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Me (Current Account)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Success: 200 OK with {user, company}. Common errors: 401 unauthorized, 500 internal_error. 400, 404, and 409 are not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Teams",
+      "item": [
+        {
+          "name": "Create Team",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Thunder FC\",\n  \"logo_image_id\": null,\n  \"founded_year\": 2014,\n  \"homebase_address\": \"Jalan Stadion Nomor 1\",\n  \"city_of_homebase_address\": \"Bandung\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/teams",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "teams"
+              ]
+            },
+            "description": "Success: 201 Created with {id, company_id, name, logo_image_id, founded_year, homebase_address, city_of_homebase_address}. Common errors: 400 invalid_request, 401 unauthorized, 409 team_name_conflict or team_logo_conflict, 500 internal_error. 404 is not expected on create. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "List Teams",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/teams",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "teams"
+              ]
+            },
+            "description": "Success: 200 OK with {items:[{id, company_id, name, logo_image_id, founded_year, homebase_address, city_of_homebase_address}]}. Common errors: 401 unauthorized, 500 internal_error. 400, 404, and 409 are not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Team",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/teams/{{team_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "teams",
+                "{{team_id}}"
+              ]
+            },
+            "description": "Success: 200 OK with {id, company_id, name, logo_image_id, founded_year, homebase_address, city_of_homebase_address}. Common errors: 400 invalid_request, 401 unauthorized, 404 team_not_found, 500 internal_error. 409 is not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Team",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Thunder FC\",\n  \"logo_image_id\": null,\n  \"founded_year\": 2014,\n  \"homebase_address\": \"Jalan Stadion Nomor 1\",\n  \"city_of_homebase_address\": \"Bandung\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/teams/{{team_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "teams",
+                "{{team_id}}"
+              ]
+            },
+            "description": "Success: 200 OK with {id, company_id, name, logo_image_id, founded_year, homebase_address, city_of_homebase_address}. Common errors: 400 invalid_request, 401 unauthorized, 404 team_not_found, 409 team_name_conflict or team_logo_conflict, 500 internal_error. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Team",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/teams/{{team_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "teams",
+                "{{team_id}}"
+              ]
+            },
+            "description": "Success: 204 No Content with an empty response body. Common errors: 400 invalid_request, 401 unauthorized, 404 team_not_found, 500 internal_error. 409 is not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Players",
+      "item": [
+        {
+          "name": "Create Player",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rizky Pratama\",\n  \"height\": 180.5,\n  \"weight\": 74.2,\n  \"position\": \"striker\",\n  \"player_number\": 9,\n  \"profile_image_id\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/teams/{{team_id}}/players",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "teams",
+                "{{team_id}}",
+                "players"
+              ]
+            },
+            "description": "Success: 201 Created with {id, team_id, name, height, weight, position, player_number, profile_image_id}. Common errors: 400 invalid_request, 401 unauthorized, 404 team_not_found, 409 player_number_conflict or profile_image_conflict, 500 internal_error. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "List Players",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/teams/{{team_id}}/players",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "teams",
+                "{{team_id}}",
+                "players"
+              ]
+            },
+            "description": "Success: 200 OK with {items:[{id, team_id, name, height, weight, position, player_number, profile_image_id}]}. Common errors: 400 invalid_request, 401 unauthorized, 404 team_not_found, 500 internal_error. 409 is not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Player",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/teams/{{team_id}}/players/{{player_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "teams",
+                "{{team_id}}",
+                "players",
+                "{{player_id}}"
+              ]
+            },
+            "description": "Success: 200 OK with {id, team_id, name, height, weight, position, player_number, profile_image_id}. Common errors: 400 invalid_request, 401 unauthorized, 404 team_not_found or player_not_found, 500 internal_error. 409 is not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Player",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rizky Pratama\",\n  \"height\": 180.5,\n  \"weight\": 74.2,\n  \"position\": \"striker\",\n  \"player_number\": 9,\n  \"profile_image_id\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/teams/{{team_id}}/players/{{player_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "teams",
+                "{{team_id}}",
+                "players",
+                "{{player_id}}"
+              ]
+            },
+            "description": "Success: 200 OK with {id, team_id, name, height, weight, position, player_number, profile_image_id}. Common errors: 400 invalid_request, 401 unauthorized, 404 team_not_found or player_not_found, 409 player_number_conflict or profile_image_conflict, 500 internal_error. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Player",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/teams/{{team_id}}/players/{{player_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "teams",
+                "{{team_id}}",
+                "players",
+                "{{player_id}}"
+              ]
+            },
+            "description": "Success: 204 No Content with an empty response body. Common errors: 400 invalid_request, 401 unauthorized, 404 team_not_found or player_not_found, 500 internal_error. 409 is not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Schedules",
+      "item": [
+        {
+          "name": "Create Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"match_date\": \"2026-07-10\",\n  \"match_time\": \"15:30:00\",\n  \"home_team_id\": {{team_id}},\n  \"guest_team_id\": {{team_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/schedules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "schedules"
+              ]
+            },
+            "description": "Success: 201 Created with {id, company_id, match_date, match_time, home_team_id, guest_team_id}. Common errors: 400 invalid_request, 401 unauthorized, 404 team_not_found, 409 schedule_conflict, 500 internal_error. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "List Schedules",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/schedules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "schedules"
+              ]
+            },
+            "description": "Success: 200 OK with {items:[{id, company_id, match_date, match_time, home_team_id, guest_team_id}]}. Common errors: 401 unauthorized, 500 internal_error. 400, 404, and 409 are not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Schedule",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/schedules/{{schedule_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "schedules",
+                "{{schedule_id}}"
+              ]
+            },
+            "description": "Success: 200 OK with {id, company_id, match_date, match_time, home_team_id, guest_team_id}. Common errors: 400 invalid_request, 401 unauthorized, 404 schedule_not_found, 500 internal_error. 409 is not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Schedule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"match_date\": \"2026-07-10\",\n  \"match_time\": \"15:30:00\",\n  \"home_team_id\": {{team_id}},\n  \"guest_team_id\": {{team_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/schedules/{{schedule_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "schedules",
+                "{{schedule_id}}"
+              ]
+            },
+            "description": "Success: 200 OK with {id, company_id, match_date, match_time, home_team_id, guest_team_id}. Common errors: 400 invalid_request, 401 unauthorized, 404 schedule_not_found or team_not_found, 409 schedule_conflict, 500 internal_error. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Schedule",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/schedules/{{schedule_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "schedules",
+                "{{schedule_id}}"
+              ]
+            },
+            "description": "Success: 204 No Content with an empty response body. Common errors: 400 invalid_request, 401 unauthorized, 404 schedule_not_found, 500 internal_error. 409 is not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Create Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"match_schedule_id\": {{schedule_id}},\n  \"final_score_home\": 3,\n  \"final_score_guest\": 1,\n  \"most_scoring_goal_player_id\": {{player_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/reports",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports"
+              ]
+            },
+            "description": "Success: 201 Created with {id, company_id, match_schedule_id, home_team_id, guest_team_id, final_score_home, final_score_guest, status_match, most_scoring_goal_player_id, accumulate_total_win_for_home_team_from_start_to_the_current_match_schedule, accumulate_total_win_for_guest_team_from_start_to_the_current_match_schedule}. Common errors: 400 invalid_request, 401 unauthorized, 404 schedule_not_found or top_scorer_not_found, 409 report_conflict, 500 internal_error. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "List Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reports",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports"
+              ]
+            },
+            "description": "Success: 200 OK with {items:[{id, company_id, match_schedule_id, home_team_id, guest_team_id, final_score_home, final_score_guest, status_match, most_scoring_goal_player_id, accumulate_total_win_for_home_team_from_start_to_the_current_match_schedule, accumulate_total_win_for_guest_team_from_start_to_the_current_match_schedule}]}. Common errors: 401 unauthorized, 500 internal_error. 400, 404, and 409 are not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reports/{{report_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "{{report_id}}"
+              ]
+            },
+            "description": "Success: 200 OK with {id, company_id, match_schedule_id, home_team_id, guest_team_id, final_score_home, final_score_guest, status_match, most_scoring_goal_player_id, accumulate_total_win_for_home_team_from_start_to_the_current_match_schedule, accumulate_total_win_for_guest_team_from_start_to_the_current_match_schedule}. Common errors: 400 invalid_request, 401 unauthorized, 404 report_not_found, 500 internal_error. 409 is not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Report",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"match_schedule_id\": {{schedule_id}},\n  \"final_score_home\": 3,\n  \"final_score_guest\": 1,\n  \"most_scoring_goal_player_id\": {{player_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/reports/{{report_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "{{report_id}}"
+              ]
+            },
+            "description": "Success: 200 OK with {id, company_id, match_schedule_id, home_team_id, guest_team_id, final_score_home, final_score_guest, status_match, most_scoring_goal_player_id, accumulate_total_win_for_home_team_from_start_to_the_current_match_schedule, accumulate_total_win_for_guest_team_from_start_to_the_current_match_schedule}. Common errors: 400 invalid_request, 401 unauthorized, 404 report_not_found or schedule_not_found or top_scorer_not_found, 409 report_conflict, 500 internal_error. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Report",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reports/{{report_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "{{report_id}}"
+              ]
+            },
+            "description": "Success: 204 No Content with an empty response body. Common errors: 400 invalid_request, 401 unauthorized, 404 report_not_found, 500 internal_error. 409 is not expected for this endpoint. Error shape: {\"error\":\"<error_code>\",\"message\":\"<human readable message>\"}."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -13,10 +13,10 @@ migrate:
 	go run ./cmd/migrate
 
 docker-up:
-	docker compose -f deployments/docker/docker-compose.yml up
+	docker compose -f deployments/docker/docker-compose.yml up -d
 
 docker-up-build:
-	docker compose -f deployments/docker/docker-compose.yml up --build
+	docker compose -f deployments/docker/docker-compose.yml up --build -d
 
 docker-down:
 	docker compose -f deployments/docker/docker-compose.yml down -v
