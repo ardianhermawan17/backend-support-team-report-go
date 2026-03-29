@@ -9,6 +9,7 @@ import (
 	reportdomain "backend-sport-team-report-go/internal/modules/report/domain"
 	"backend-sport-team-report-go/internal/modules/report/domain/entities"
 	"backend-sport-team-report-go/internal/modules/report/domain/repositories"
+	"backend-sport-team-report-go/internal/shared/paginator"
 )
 
 const (
@@ -79,8 +80,8 @@ func (s Service) Create(ctx context.Context, input CreateReportInput) (entities.
 	return created, nil
 }
 
-func (s Service) List(ctx context.Context, companyID int64) ([]entities.Report, error) {
-	return s.repository.ListByCompany(ctx, companyID)
+func (s Service) List(ctx context.Context, companyID int64, params paginator.Params) (paginator.Result[entities.Report], error) {
+	return s.repository.ListByCompany(ctx, companyID, params)
 }
 
 func (s Service) Get(ctx context.Context, companyID, reportID int64) (entities.Report, error) {

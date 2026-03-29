@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	ginrouter "backend-sport-team-report-go/internal/api/gin/router"
 	"backend-sport-team-report-go/internal/config"
@@ -17,18 +16,13 @@ import (
 )
 
 func newSchedulesRouter(conn *postgres.Connection) http.Handler {
-	cfg := config.Config{
-		App: config.AppConfig{
-			Name: "soccer-team-report",
-			Env:  config.EnvTest,
-		},
-		Database: config.DatabaseConfig{},
-		Auth: config.AuthConfig{
-			JWTSecret:      "integration-test-secret",
-			AccessTokenTTL: 15 * time.Minute,
-		},
-	}
+	cfg := testhelpers.DefaultTestConfig()
+	return ginrouter.New(cfg, conn, logger.New(cfg.App.Name, cfg.App.Env))
+}
 
+func newSchedulesRouterWithSecurity(conn *postgres.Connection, security config.SecurityConfig) http.Handler {
+	cfg := testhelpers.DefaultTestConfig()
+	cfg.Security = security
 	return ginrouter.New(cfg, conn, logger.New(cfg.App.Name, cfg.App.Env))
 }
 

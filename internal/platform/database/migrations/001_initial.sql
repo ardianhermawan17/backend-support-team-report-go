@@ -27,10 +27,12 @@ ALTER TYPE audit_action_type ADD VALUE IF NOT EXISTS 'RESTORE';
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT PRIMARY KEY,
     username VARCHAR(64) NOT NULL,
+    email VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ
+    deleted_at TIMESTAMPTZ,
+    CONSTRAINT ck_users_email_not_blank CHECK (BTRIM(email) <> '')
 );
 
 CREATE TABLE IF NOT EXISTS companies (
@@ -118,12 +120,19 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 ALTER TABLE images ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 ALTER TABLE teams ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 ALTER TABLE schedules ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 ALTER TABLE reports ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+UPDATE users
+SET email = CONCAT(username, '@example.invalid')
+WHERE email IS NULL;
+
+ALTER TABLE users ALTER COLUMN email SET NOT NULL;
 
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_username_key;
 ALTER TABLE companies DROP CONSTRAINT IF EXISTS companies_user_id_key;
@@ -138,6 +147,11 @@ ALTER TABLE reports DROP CONSTRAINT IF EXISTS reports_match_schedule_id_key;
 
 DO $$
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_users_email_not_blank') THEN
+        ALTER TABLE users
+        ADD CONSTRAINT ck_users_email_not_blank CHECK (BTRIM(email) <> '');
+    END IF;
+
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_schedules_deleted_after_create') THEN
         ALTER TABLE schedules
         ADD CONSTRAINT ck_schedules_deleted_after_create CHECK (deleted_at IS NULL OR deleted_at >= created_at);

@@ -6,6 +6,7 @@ type Config struct {
 	App      AppConfig      `yaml:"app"`
 	Database DatabaseConfig `yaml:"database"`
 	Auth     AuthConfig     `yaml:"auth"`
+	Security SecurityConfig `yaml:"security"`
 }
 
 type AppConfig struct {
@@ -35,4 +36,19 @@ type DatabaseConfig struct {
 type AuthConfig struct {
 	JWTSecret      string        `yaml:"jwt_secret"`
 	AccessTokenTTL time.Duration `yaml:"access_token_ttl"`
+}
+
+type SecurityConfig struct {
+	MaxJSONBodyBytes int64           `yaml:"max_json_body_bytes"`
+	RateLimit        RateLimitConfig `yaml:"rate_limit"`
+}
+
+type RateLimitConfig struct {
+	Login              RateLimitRule `yaml:"login"`
+	AuthenticatedWrite RateLimitRule `yaml:"authenticated_write"`
+}
+
+type RateLimitRule struct {
+	Window      time.Duration `yaml:"window"`
+	MaxRequests int           `yaml:"max_requests"`
 }

@@ -5,6 +5,7 @@ import "time"
 type AuthenticatedAccount struct {
 	UserID      int64
 	Username    string
+	Email       string
 	CompanyID   int64
 	CompanyName string
 }

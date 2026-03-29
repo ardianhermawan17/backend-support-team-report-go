@@ -10,19 +10,22 @@ import (
 	playerdomain "backend-sport-team-report-go/internal/modules/player/domain"
 	"backend-sport-team-report-go/internal/modules/player/interfaces/http/requests"
 	"backend-sport-team-report-go/internal/modules/player/interfaces/http/responses"
+	"backend-sport-team-report-go/internal/shared/httpjson"
 	"backend-sport-team-report-go/internal/shared/logger"
 	sharedmiddleware "backend-sport-team-report-go/internal/shared/middleware"
+	"backend-sport-team-report-go/internal/shared/paginator"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	log     *logger.Logger
-	service application.Service
+	log          *logger.Logger
+	service      application.Service
+	maxBodyBytes int64
 }
 
-func NewHandler(log *logger.Logger, service application.Service) *Handler {
-	return &Handler{log: log, service: service}
+func NewHandler(log *logger.Logger, service application.Service, maxBodyBytes int64) *Handler {
+	return &Handler{log: log, service: service, maxBodyBytes: maxBodyBytes}
 }
 
 func (h *Handler) Create(c *gin.Context) {
@@ -38,8 +41,8 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 
 	var request requests.UpsertPlayerRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": "invalid request body"})
+	if err := httpjson.Bind(c, &request, h.maxBodyBytes); err != nil {
+		httpjson.WriteError(c, err)
 		return
 	}
 
@@ -74,13 +77,19 @@ func (h *Handler) List(c *gin.Context) {
 		return
 	}
 
-	players, err := h.service.List(c.Request.Context(), account.CompanyID, teamID)
+	params, err := paginator.FromRaw(c.Query("page"), c.Query("limit"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": "page and limit must be positive integers"})
+		return
+	}
+
+	players, err := h.service.List(c.Request.Context(), account.CompanyID, teamID, params)
 	if err != nil {
 		h.handleError(c, err, "players list failed")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"items": responses.NewPlayerListResponse(players)})
+	c.JSON(http.StatusOK, gin.H{"items": responses.NewPlayerListResponse(players.Items), "meta": players.Meta})
 }
 
 func (h *Handler) GetByID(c *gin.Context) {
@@ -127,8 +136,8 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	var request requests.UpsertPlayerRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": "invalid request body"})
+	if err := httpjson.Bind(c, &request, h.maxBodyBytes); err != nil {
+		httpjson.WriteError(c, err)
 		return
 	}
 

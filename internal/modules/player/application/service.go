@@ -10,6 +10,7 @@ import (
 	playerdomain "backend-sport-team-report-go/internal/modules/player/domain"
 	"backend-sport-team-report-go/internal/modules/player/domain/entities"
 	"backend-sport-team-report-go/internal/modules/player/domain/repositories"
+	"backend-sport-team-report-go/internal/shared/paginator"
 )
 
 var validPositions = map[string]struct{}{
@@ -87,8 +88,8 @@ func (s Service) Create(ctx context.Context, input CreatePlayerInput) (entities.
 	return created, nil
 }
 
-func (s Service) List(ctx context.Context, companyID, teamID int64) ([]entities.Player, error) {
-	return s.repository.ListByTeam(ctx, companyID, teamID)
+func (s Service) List(ctx context.Context, companyID, teamID int64, params paginator.Params) (paginator.Result[entities.Player], error) {
+	return s.repository.ListByTeam(ctx, companyID, teamID, params)
 }
 
 func (s Service) Get(ctx context.Context, companyID, teamID, playerID int64) (entities.Player, error) {

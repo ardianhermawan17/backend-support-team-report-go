@@ -10,6 +10,7 @@ import (
 	authdomain "backend-sport-team-report-go/internal/modules/auth/domain"
 	"backend-sport-team-report-go/internal/modules/auth/interfaces/http/requests"
 	"backend-sport-team-report-go/internal/modules/auth/interfaces/http/responses"
+	"backend-sport-team-report-go/internal/shared/httpjson"
 	"backend-sport-team-report-go/internal/shared/logger"
 	sharedmiddleware "backend-sport-team-report-go/internal/shared/middleware"
 
@@ -21,21 +22,25 @@ type Handler struct {
 	login          authapplication.LoginHandler
 	currentAccount authapplication.CurrentAccountHandler
 	tokens         ports.TokenService
+	maxBodyBytes   int64
 }
 
-func NewHandler(log *logger.Logger, login authapplication.LoginHandler, currentAccount authapplication.CurrentAccountHandler, tokens ports.TokenService) *Handler {
+func NewHandler(log *logger.Logger, login authapplication.LoginHandler, currentAccount authapplication.CurrentAccountHandler, tokens ports.TokenService, maxBodyBytes int64) *Handler {
 	return &Handler{
 		log:            log,
 		login:          login,
 		currentAccount: currentAccount,
 		tokens:         tokens,
+		maxBodyBytes:   maxBodyBytes,
 	}
 }
 
 func (h *Handler) Login(c *gin.Context) {
 	var request requests.LoginRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": "username and password are required"})
+	if err := httpjson.Bind(c, &request, h.maxBodyBytes); err != nil {
+		if !httpjson.WriteError(c, err) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": "username and password are required"})
+		}
 		return
 	}
 
@@ -48,6 +53,7 @@ func (h *Handler) Login(c *gin.Context) {
 	result, err := h.login.Handle(c.Request.Context(), request.Username, request.Password)
 	if err != nil {
 		if errors.Is(err, authdomain.ErrInvalidCredentials) {
+			h.log.InfoContext(c.Request.Context(), "auth login rejected", "path", c.FullPath(), "remote_ip", sharedmiddleware.RemoteIP(c))
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid_credentials", "message": "username or password is incorrect"})
 			return
 		}
@@ -74,12 +80,14 @@ func (h *Handler) RequireAuthentication() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, ok := bearerToken(c.GetHeader("Authorization"))
 		if !ok {
+			h.log.InfoContext(c.Request.Context(), "auth missing bearer token", "path", c.FullPath(), "remote_ip", sharedmiddleware.RemoteIP(c))
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized", "message": "bearer token is required"})
 			return
 		}
 
 		identity, err := h.tokens.Parse(token)
 		if err != nil {
+			h.log.InfoContext(c.Request.Context(), "auth invalid bearer token", "path", c.FullPath(), "remote_ip", sharedmiddleware.RemoteIP(c))
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized", "message": "bearer token is invalid"})
 			return
 		}
@@ -87,6 +95,7 @@ func (h *Handler) RequireAuthentication() gin.HandlerFunc {
 		account, err := h.currentAccount.Handle(c.Request.Context(), identity)
 		if err != nil {
 			if errors.Is(err, authdomain.ErrUnauthorized) {
+				h.log.InfoContext(c.Request.Context(), "auth inactive account rejected", "path", c.FullPath(), "remote_ip", sharedmiddleware.RemoteIP(c))
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized", "message": "authenticated account is no longer active"})
 				return
 			}

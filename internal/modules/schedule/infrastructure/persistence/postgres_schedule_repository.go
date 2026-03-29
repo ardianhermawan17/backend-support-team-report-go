@@ -13,6 +13,7 @@ import (
 	scheduledomain "backend-sport-team-report-go/internal/modules/schedule/domain"
 	"backend-sport-team-report-go/internal/modules/schedule/domain/entities"
 	"backend-sport-team-report-go/internal/platform/database/postgres"
+	"backend-sport-team-report-go/internal/shared/paginator"
 )
 
 type ScheduleRepository struct {
@@ -69,7 +70,17 @@ func (r *ScheduleRepository) Create(ctx context.Context, schedule entities.Sched
 	return nil
 }
 
-func (r *ScheduleRepository) ListByCompany(ctx context.Context, companyID int64) ([]entities.Schedule, error) {
+func (r *ScheduleRepository) ListByCompany(ctx context.Context, companyID int64, params paginator.Params) (paginator.Result[entities.Schedule], error) {
+	var totalItems int
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM schedules
+		WHERE company_id = $1
+		  AND deleted_at IS NULL
+	`, companyID).Scan(&totalItems); err != nil {
+		return paginator.Result[entities.Schedule]{}, fmt.Errorf("count schedules by company: %w", err)
+	}
+
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT
 			id,
@@ -84,10 +95,12 @@ func (r *ScheduleRepository) ListByCompany(ctx context.Context, companyID int64)
 		FROM schedules
 		WHERE company_id = $1
 		  AND deleted_at IS NULL
-		ORDER BY match_date ASC, match_time ASC, created_at ASC
-	`, companyID)
+		ORDER BY match_date ASC, match_time ASC, created_at ASC, id ASC
+		LIMIT $2
+		OFFSET $3
+	`, companyID, params.Limit, params.Offset)
 	if err != nil {
-		return nil, fmt.Errorf("list schedules by company: %w", err)
+		return paginator.Result[entities.Schedule]{}, fmt.Errorf("list schedules by company: %w", err)
 	}
 	defer rows.Close()
 
@@ -95,16 +108,19 @@ func (r *ScheduleRepository) ListByCompany(ctx context.Context, companyID int64)
 	for rows.Next() {
 		schedule, scanErr := scanSchedule(rows)
 		if scanErr != nil {
-			return nil, scanErr
+			return paginator.Result[entities.Schedule]{}, scanErr
 		}
 		schedules = append(schedules, schedule)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate schedules by company: %w", err)
+		return paginator.Result[entities.Schedule]{}, fmt.Errorf("iterate schedules by company: %w", err)
 	}
 
-	return schedules, nil
+	return paginator.Result[entities.Schedule]{
+		Items: schedules,
+		Meta:  paginator.BuildMeta(params, totalItems),
+	}, nil
 }
 
 func (r *ScheduleRepository) FindByIDAndCompany(ctx context.Context, scheduleID, companyID int64) (entities.Schedule, error) {
@@ -152,6 +168,25 @@ func (r *ScheduleRepository) Update(ctx context.Context, schedule entities.Sched
 		return fmt.Errorf("set audit actor for schedule update: %w", err)
 	}
 
+	var currentUpdatedAt time.Time
+	if err = tx.QueryRowContext(ctx, `
+		SELECT updated_at
+		FROM schedules
+		WHERE id = $1
+		  AND company_id = $2
+		  AND deleted_at IS NULL
+		FOR UPDATE
+	`, schedule.ID, schedule.CompanyID).Scan(&currentUpdatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return scheduledomain.ErrScheduleNotFound
+		}
+		return fmt.Errorf("lock schedule for update: %w", err)
+	}
+
+	if !currentUpdatedAt.Equal(schedule.UpdatedAt) {
+		return scheduledomain.ErrScheduleConcurrentModification
+	}
+
 	result, err := tx.ExecContext(ctx, `
 		UPDATE schedules s
 		SET
@@ -179,9 +214,6 @@ func (r *ScheduleRepository) Update(ctx context.Context, schedule entities.Sched
 		return fmt.Errorf("read schedule update affected rows: %w", err)
 	}
 	if rowsAffected == 0 {
-		if !r.scheduleExists(ctx, schedule.ID, schedule.CompanyID) {
-			return scheduledomain.ErrScheduleNotFound
-		}
 		return scheduledomain.ErrScheduleTeamNotFound
 	}
 
@@ -290,8 +322,13 @@ func (r *ScheduleRepository) scheduleExists(ctx context.Context, scheduleID, com
 func classifyWriteError(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
-		if pgErr.Code == "23505" && pgErr.ConstraintName == "uq_schedules_match_active" {
-			return scheduledomain.ErrScheduleAlreadyExists
+		switch pgErr.Code {
+		case "23505":
+			if pgErr.ConstraintName == "uq_schedules_match_active" {
+				return scheduledomain.ErrScheduleAlreadyExists
+			}
+		case "40001", "40P01":
+			return scheduledomain.ErrScheduleConcurrentModification
 		}
 	}
 

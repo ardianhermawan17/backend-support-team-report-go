@@ -13,6 +13,7 @@ import (
 	reportdomain "backend-sport-team-report-go/internal/modules/report/domain"
 	"backend-sport-team-report-go/internal/modules/report/domain/entities"
 	"backend-sport-team-report-go/internal/platform/database/postgres"
+	"backend-sport-team-report-go/internal/shared/paginator"
 )
 
 type ReportRepository struct {
@@ -122,7 +123,19 @@ func (r *ReportRepository) Create(ctx context.Context, report entities.Report, a
 	return nil
 }
 
-func (r *ReportRepository) ListByCompany(ctx context.Context, companyID int64) ([]entities.Report, error) {
+func (r *ReportRepository) ListByCompany(ctx context.Context, companyID int64, params paginator.Params) (paginator.Result[entities.Report], error) {
+	var totalItems int
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM reports r
+		JOIN schedules s ON s.id = r.match_schedule_id
+		WHERE s.company_id = $1
+		  AND r.deleted_at IS NULL
+		  AND s.deleted_at IS NULL
+	`, companyID).Scan(&totalItems); err != nil {
+		return paginator.Result[entities.Report]{}, fmt.Errorf("count reports by company: %w", err)
+	}
+
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT
 			r.id,
@@ -146,10 +159,12 @@ func (r *ReportRepository) ListByCompany(ctx context.Context, companyID int64) (
 		WHERE s.company_id = $1
 		  AND r.deleted_at IS NULL
 		  AND s.deleted_at IS NULL
-		ORDER BY s.match_date ASC, s.match_time ASC, r.created_at ASC
-	`, companyID)
+		ORDER BY s.match_date ASC, s.match_time ASC, r.created_at ASC, r.id ASC
+		LIMIT $2
+		OFFSET $3
+	`, companyID, params.Limit, params.Offset)
 	if err != nil {
-		return nil, fmt.Errorf("list reports by company: %w", err)
+		return paginator.Result[entities.Report]{}, fmt.Errorf("list reports by company: %w", err)
 	}
 	defer rows.Close()
 
@@ -157,16 +172,19 @@ func (r *ReportRepository) ListByCompany(ctx context.Context, companyID int64) (
 	for rows.Next() {
 		report, scanErr := scanReport(rows)
 		if scanErr != nil {
-			return nil, scanErr
+			return paginator.Result[entities.Report]{}, scanErr
 		}
 		reports = append(reports, report)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate reports by company: %w", err)
+		return paginator.Result[entities.Report]{}, fmt.Errorf("iterate reports by company: %w", err)
 	}
 
-	return reports, nil
+	return paginator.Result[entities.Report]{
+		Items: reports,
+		Meta:  paginator.BuildMeta(params, totalItems),
+	}, nil
 }
 
 func (r *ReportRepository) FindByIDAndCompany(ctx context.Context, reportID, companyID int64) (entities.Report, error) {

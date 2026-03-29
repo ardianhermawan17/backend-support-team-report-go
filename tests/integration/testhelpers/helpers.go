@@ -25,6 +25,7 @@ func CreateAccountAndLogin(t *testing.T, repo *authpersistence.AccountRepository
 		User: entities.User{
 			ID:           userID,
 			Username:     username,
+			Email:        username + "@example.test",
 			PasswordHash: hash,
 		},
 		Company: entities.Company{

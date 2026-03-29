@@ -46,5 +46,18 @@ services:
       postgres:
         condition: service_healthy
 
+  seed:
+    container_name: soccer-team-report-seed
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.dev
+    command: ["/bin/seeding"]
+    environment:
+      APP_ENV: local
+      DATABASE_DSN: postgres://postgres:postgres@postgres:5432/soccer_team_report?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres-data:
