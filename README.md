@@ -8,6 +8,35 @@ If you only need to get the project running, use one of these paths:
 2. Docker Compose
 3. Local manual Go commands
 
+## Architecture At A Glance
+
+The project follows the architecture direction defined in `docs/architecture/`:
+
+- DDD-style module boundaries
+- CQRS-style separation between commands and queries
+- business rules kept close to the domain
+- database access isolated from HTTP handlers
+
+The docs describe the codebase as a Gin backend designed around DDD and CQRS, with modules split into domain, application, infrastructure, and interface layers.
+
+## Important Project Features
+
+### Snowflake ID generator
+
+The project uses Snowflake-style `BIGINT` IDs for business entities. This is a documented rule in the architecture docs, and it is wired through the shared ID generator under `internal/platform/idgenerator`.
+
+In practice, this means the application does not depend on database auto-increment IDs for core entities. That helps keep ID generation consistent across services or multiple running instances while reducing the risk of duplicate business IDs.
+
+### Security and reliability controls
+
+The repository includes several protections that matter when you run or extend it:
+
+- rate limiting on login and authenticated write endpoints
+- transactional writes and database constraints for race-sensitive operations
+- repository-based SQL access with parameterized queries to reduce SQL injection risk
+- company-boundary enforcement across teams, players, schedules, and reports
+- audit logging for important mutations
+
 ## Before You Start
 
 You will need:
@@ -29,6 +58,12 @@ Environment overrides supported by the app:
 - `AUTH_JWT_SECRET`
 
 Use `.env.example` as a reference. The app does not load `.env` automatically.
+
+For local development, the default database DSN is:
+
+```text
+postgres://postgres:postgres@localhost:5432/soccer_team_report?sslmode=disable
+```
 
 ## 1. Run With Makefile
 
@@ -119,12 +154,6 @@ go mod tidy
 
 ### Set environment variables if needed
 
-Default local database DSN:
-
-```text
-postgres://postgres:postgres@localhost:5432/soccer_team_report?sslmode=disable
-```
-
 PowerShell example:
 
 ```powershell
@@ -200,4 +229,7 @@ Some integration tests start a real PostgreSQL container through Docker, so Dock
 - Seed entrypoint: `go run ./cmd/seeding`
 - Migrations live in `internal/platform/database/migrations`
 - The health endpoint is `GET /api/v1/health`
+- Login and authenticated write endpoints are rate limited
+- Race-sensitive flows are protected with transactions and database constraints
+- Business IDs use Snowflake-style `BIGINT` values
 - The `docs/` folder is still the source of truth for project rules and architecture
