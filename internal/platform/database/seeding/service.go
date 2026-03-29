@@ -19,6 +19,10 @@ const (
 	playerNodeID   int64 = 2
 	scheduleNodeID int64 = 3
 	reportNodeID   int64 = 4
+
+	mainGoalUsername    = "main.goal"
+	mainGoalEmail       = "main.goal@gmail.com"
+	mainGoalCompanyName = "Main Goal Soccer Co."
 )
 
 type Service struct {
@@ -174,6 +178,38 @@ func (s *Service) Seed(ctx context.Context) error {
 
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("commit seeding transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) SeedMainGoalScenarioAccount(ctx context.Context) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin main.goal seeding transaction: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	mainGoalUserID, err := s.ensureUser(ctx, tx, mainGoalUsername, mainGoalEmail, s.adminPassword)
+	if err != nil {
+		return err
+	}
+
+	if _, err = tx.ExecContext(ctx, `SELECT set_config('app.user_id', $1, true)`, strconv.FormatInt(mainGoalUserID, 10)); err != nil {
+		return fmt.Errorf("set main.goal seeding audit actor: %w", err)
+	}
+
+	if _, err = s.ensureCompany(ctx, tx, mainGoalUserID, mainGoalCompanyName); err != nil {
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("commit main.goal seeding transaction: %w", err)
 	}
 
 	return nil

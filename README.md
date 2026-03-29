@@ -110,6 +110,14 @@ make run
 make test
 ```
 
+#### For full scenario test case running this command
+
+Note: What it did is perform main goals scenario test.
+
+```bash
+go test ./tests/integration/modules/main_goals -v -count=1
+```
+
 ## 2. Run With Docker Compose
 
 Use this if you do not want to use `make`, but still want the full container-based setup.
